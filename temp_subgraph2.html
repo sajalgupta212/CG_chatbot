@@ -1,0 +1,155 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        
+            <script src="lib/bindings/utils.js"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+            
+        
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+        <link
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6"
+          crossorigin="anonymous"
+        />
+        <script
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+          crossorigin="anonymous"
+        ></script>
+
+
+        <center>
+          <h1></h1>
+        </center>
+        <style type="text/css">
+
+             #mynetwork {
+                 width: 100%;
+                 height: 520px;
+                 background-color: #ffffff;
+                 border: 1px solid lightgray;
+                 position: relative;
+                 float: left;
+             }
+
+             
+
+             
+
+             
+        </style>
+    </head>
+
+
+    <body>
+        <div class="card" style="width: 100%">
+            
+            
+            <div id="mynetwork" class="card-body"></div>
+        </div>
+
+        
+        
+
+        <script type="text/javascript">
+
+              // initialize global variables.
+              var edges;
+              var nodes;
+              var allNodes;
+              var allEdges;
+              var nodeColors;
+              var originalNodes;
+              var network;
+              var container;
+              var options, data;
+              var filter = {
+                  item : '',
+                  property : '',
+                  value : []
+              };
+
+              
+
+              
+
+              // This method is responsible for drawing the graph, returns the drawn network
+              function drawGraph() {
+                  var container = document.getElementById('mynetwork');
+
+                  
+
+                  // parsing and collecting nodes and edges from the python
+                  nodes = new vis.DataSet([{"color": "#8E24AA", "href": "?node=SALES_DOCUMENT_MASTER_MTLZ_SP", "id": "SALES_DOCUMENT_MASTER_MTLZ_SP", "label": "SALES_DOCUMENT_MASTER_MTLZ_SP", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_WRK%3B", "id": "CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_WRK;", "label": "CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_WRK;", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_CO_COMMON_CDS.V_VBPA", "id": "PUBLISH.CORE_CO_COMMON_CDS.V_VBPA", "label": "PUBLISH.CORE_CO_COMMON_CDS.V_VBPA", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_CO_OM_CDS.V_VBAP", "id": "PUBLISH.CORE_CO_OM_CDS.V_VBAP", "label": "PUBLISH.CORE_CO_OM_CDS.V_VBAP", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_CO_OM_CDS.V_LIPS", "id": "PUBLISH.CORE_CO_OM_CDS.V_LIPS", "label": "PUBLISH.CORE_CO_OM_CDS.V_LIPS", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_CO_COMMON_CDS.V_VBEP", "id": "PUBLISH.CORE_CO_COMMON_CDS.V_VBEP", "label": "PUBLISH.CORE_CO_COMMON_CDS.V_VBEP", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_CO_OM_CDS.V_VBAK", "id": "PUBLISH.CORE_CO_OM_CDS.V_VBAK", "label": "PUBLISH.CORE_CO_OM_CDS.V_VBAK", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_CO_COMMON_CDS.V_EKKN", "id": "PUBLISH.CORE_CO_COMMON_CDS.V_EKKN", "label": "PUBLISH.CORE_CO_COMMON_CDS.V_EKKN", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_CO_COMMON_CDS.V_EKKO", "id": "PUBLISH.CORE_CO_COMMON_CDS.V_EKKO", "label": "PUBLISH.CORE_CO_COMMON_CDS.V_EKKO", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_GSC_COMMON_CDS.V_EKPO", "id": "PUBLISH.CORE_GSC_COMMON_CDS.V_EKPO", "label": "PUBLISH.CORE_GSC_COMMON_CDS.V_EKPO", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_GSC_COMMON_CDS.V_EKES", "id": "PUBLISH.CORE_GSC_COMMON_CDS.V_EKES", "label": "PUBLISH.CORE_GSC_COMMON_CDS.V_EKES", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_CO_COMMON_CDS.V_CDHDR", "id": "PUBLISH.CORE_CO_COMMON_CDS.V_CDHDR", "label": "PUBLISH.CORE_CO_COMMON_CDS.V_CDHDR", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_CO_COMMON_CDS.V_CDPOS", "id": "PUBLISH.CORE_CO_COMMON_CDS.V_CDPOS", "label": "PUBLISH.CORE_CO_COMMON_CDS.V_CDPOS", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_CO_COMMON_CDS.V_VBRK", "id": "PUBLISH.CORE_CO_COMMON_CDS.V_VBRK", "label": "PUBLISH.CORE_CO_COMMON_CDS.V_VBRK", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_CO_OM_CDS.V_VBRP", "id": "PUBLISH.CORE_CO_OM_CDS.V_VBRP", "label": "PUBLISH.CORE_CO_OM_CDS.V_VBRP", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_CO_COMMON_CDS.V_VBKD", "id": "PUBLISH.CORE_CO_COMMON_CDS.V_VBKD", "label": "PUBLISH.CORE_CO_COMMON_CDS.V_VBKD", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_CO_OM_MAIN.V_TINCT", "id": "PUBLISH.CORE_CO_OM_MAIN.V_TINCT", "label": "PUBLISH.CORE_CO_OM_MAIN.V_TINCT", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.MDM_S4HANA_BASE.V_TVKO", "id": "PUBLISH.MDM_S4HANA_BASE.V_TVKO", "label": "PUBLISH.MDM_S4HANA_BASE.V_TVKO", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.MDM_S4HANA_BASE.V_TVKOT", "id": "PUBLISH.MDM_S4HANA_BASE.V_TVKOT", "label": "PUBLISH.MDM_S4HANA_BASE.V_TVKOT", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_MDM_CDS.V_TVSBT", "id": "PUBLISH.CORE_MDM_CDS.V_TVSBT", "label": "PUBLISH.CORE_MDM_CDS.V_TVSBT", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.MDM_S4HANA_BASE.V_T001", "id": "PUBLISH.MDM_S4HANA_BASE.V_T001", "label": "PUBLISH.MDM_S4HANA_BASE.V_T001", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.FIN_DIM_PUBLIC.GEOGRAPHY_HIER", "id": "PUBLISH.FIN_DIM_PUBLIC.GEOGRAPHY_HIER", "label": "PUBLISH.FIN_DIM_PUBLIC.GEOGRAPHY_HIER", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_CO_COMMON_CDS.V_VBUK", "id": "PUBLISH.CORE_CO_COMMON_CDS.V_VBUK", "label": "PUBLISH.CORE_CO_COMMON_CDS.V_VBUK", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.MDM.MATERIAL_PROD_HRCY", "id": "PUBLISH.MDM.MATERIAL_PROD_HRCY", "label": "PUBLISH.MDM.MATERIAL_PROD_HRCY", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_CO_COMMON_CDS.V_VBUP", "id": "PUBLISH.CORE_CO_COMMON_CDS.V_VBUP", "label": "PUBLISH.CORE_CO_COMMON_CDS.V_VBUP", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=VBEP_SUM", "id": "VBEP_SUM", "label": "VBEP_SUM", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_CO_COMMON_CDS.V_LIKP", "id": "PUBLISH.CORE_CO_COMMON_CDS.V_LIKP", "label": "PUBLISH.CORE_CO_COMMON_CDS.V_LIKP", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=BILLING_DOCS", "id": "BILLING_DOCS", "label": "BILLING_DOCS", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=VBPA_PARTNERS", "id": "VBPA_PARTNERS", "label": "VBPA_PARTNERS", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.MDM_S4HANA_BASE.V_PA0105", "id": "PUBLISH.MDM_S4HANA_BASE.V_PA0105", "label": "PUBLISH.MDM_S4HANA_BASE.V_PA0105", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.MDM_BASE.EID_WORKFORCE", "id": "PUBLISH.MDM_BASE.EID_WORKFORCE", "label": "PUBLISH.MDM_BASE.EID_WORKFORCE", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_MDM_CDS.V_KNA1", "id": "PUBLISH.CORE_MDM_CDS.V_KNA1", "label": "PUBLISH.CORE_MDM_CDS.V_KNA1", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.MDM.GCSA_GC_CNTRYC_ALL", "id": "PUBLISH.MDM.GCSA_GC_CNTRYC_ALL", "label": "PUBLISH.MDM.GCSA_GC_CNTRYC_ALL", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.MDM.MATERIAL", "id": "PUBLISH.MDM.MATERIAL", "label": "PUBLISH.MDM.MATERIAL", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.MDM_S4HANA_BASE.V_MARC", "id": "PUBLISH.MDM_S4HANA_BASE.V_MARC", "label": "PUBLISH.MDM_S4HANA_BASE.V_MARC", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.MDM.MATERIAL_PLANT", "id": "PUBLISH.MDM.MATERIAL_PLANT", "label": "PUBLISH.MDM.MATERIAL_PLANT", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_MDM_CDS.V_T024D", "id": "PUBLISH.CORE_MDM_CDS.V_T024D", "label": "PUBLISH.CORE_MDM_CDS.V_T024D", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.MDM.MATERIAL_SALES_ORG", "id": "PUBLISH.MDM.MATERIAL_SALES_ORG", "label": "PUBLISH.MDM.MATERIAL_SALES_ORG", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.MDM_S4HANA_BASE.V_T001W", "id": "PUBLISH.MDM_S4HANA_BASE.V_T001W", "label": "PUBLISH.MDM_S4HANA_BASE.V_T001W", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PURCH_ORDER", "id": "PURCH_ORDER", "label": "PURCH_ORDER", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.GSC_LEX_PUBLIC.V_FACTORY_HOLIDAY_CAL_WORKING_DAYS%29", "id": "PUBLISH.GSC_LEX_PUBLIC.V_FACTORY_HOLIDAY_CAL_WORKING_DAYS)", "label": "PUBLISH.GSC_LEX_PUBLIC.V_FACTORY_HOLIDAY_CAL_WORKING_DAYS)", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=CHG_LOG_VBAK_BLK", "id": "CHG_LOG_VBAK_BLK", "label": "CHG_LOG_VBAK_BLK", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=CHG_LOG_VBAP_BLK", "id": "CHG_LOG_VBAP_BLK", "label": "CHG_LOG_VBAP_BLK", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=CHG_LOG_VBEP_BLK", "id": "CHG_LOG_VBEP_BLK", "label": "CHG_LOG_VBEP_BLK", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=CHANGE_LOG_REJ", "id": "CHANGE_LOG_REJ", "label": "CHANGE_LOG_REJ", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_CO_COMMON_CDS.V_T630R", "id": "PUBLISH.CORE_CO_COMMON_CDS.V_T630R", "label": "PUBLISH.CORE_CO_COMMON_CDS.V_T630R", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_CO_OM_CDS.V_PRCD_ELEMENTS", "id": "PUBLISH.CORE_CO_OM_CDS.V_PRCD_ELEMENTS", "label": "PUBLISH.CORE_CO_OM_CDS.V_PRCD_ELEMENTS", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_CO_OM_MAIN.V_TVAKT", "id": "PUBLISH.CORE_CO_OM_MAIN.V_TVAKT", "label": "PUBLISH.CORE_CO_OM_MAIN.V_TVAKT", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_CO_COMMON_CDS.V_TVAUT", "id": "PUBLISH.CORE_CO_COMMON_CDS.V_TVAUT", "label": "PUBLISH.CORE_CO_COMMON_CDS.V_TVAUT", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_CO_COMMON_CDS.V_OTIF_AND_PRODAVAIL", "id": "PUBLISH.CORE_CO_COMMON_CDS.V_OTIF_AND_PRODAVAIL", "label": "PUBLISH.CORE_CO_COMMON_CDS.V_OTIF_AND_PRODAVAIL", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_CO_COMMON_CDS.V_ZSTXL", "id": "PUBLISH.CORE_CO_COMMON_CDS.V_ZSTXL", "label": "PUBLISH.CORE_CO_COMMON_CDS.V_ZSTXL", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_CO_COMMON_CDS.V_T461X", "id": "PUBLISH.CORE_CO_COMMON_CDS.V_T461X", "label": "PUBLISH.CORE_CO_COMMON_CDS.V_T461X", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_CO_COMMON_CDS.V_T176T", "id": "PUBLISH.CORE_CO_COMMON_CDS.V_T176T", "label": "PUBLISH.CORE_CO_COMMON_CDS.V_T176T", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_MDM_CDS.V_KNVV", "id": "PUBLISH.CORE_MDM_CDS.V_KNVV", "label": "PUBLISH.CORE_MDM_CDS.V_KNVV", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_CO_COMMON_CDS.V_TVFST", "id": "PUBLISH.CORE_CO_COMMON_CDS.V_TVFST", "label": "PUBLISH.CORE_CO_COMMON_CDS.V_TVFST", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_CO_COMMON_CDS.V_TVLST", "id": "PUBLISH.CORE_CO_COMMON_CDS.V_TVLST", "label": "PUBLISH.CORE_CO_COMMON_CDS.V_TVLST", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.MDM.MATERIAL_PIPO", "id": "PUBLISH.MDM.MATERIAL_PIPO", "label": "PUBLISH.MDM.MATERIAL_PIPO", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.CORE_COCKPIT_CDS.V_COCKPIT_CONTROL", "id": "PUBLISH.CORE_COCKPIT_CDS.V_COCKPIT_CONTROL", "label": "PUBLISH.CORE_COCKPIT_CDS.V_COCKPIT_CONTROL", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=LEGACY_DATA.DFTSV01.V01_FTS_BLBO", "id": "LEGACY_DATA.DFTSV01.V01_FTS_BLBO", "label": "LEGACY_DATA.DFTSV01.V01_FTS_BLBO", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.MDM_S4HANA_BASE.V_T151T", "id": "PUBLISH.MDM_S4HANA_BASE.V_T151T", "label": "PUBLISH.MDM_S4HANA_BASE.V_T151T", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PUBLISH.GSC_COMMON_PUBLIC.V_PRIM_ULT_SPLY_LOC", "id": "PUBLISH.GSC_COMMON_PUBLIC.V_PRIM_ULT_SPLY_LOC", "label": "PUBLISH.GSC_COMMON_PUBLIC.V_PRIM_ULT_SPLY_LOC", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_WRK", "id": "CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_WRK", "label": "CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_WRK", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=VW_CUSTOMER_ORDER_SUMMARY", "id": "VW_CUSTOMER_ORDER_SUMMARY", "label": "VW_CUSTOMER_ORDER_SUMMARY", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=CUSTOMERS", "id": "CUSTOMERS", "label": "CUSTOMERS", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=ORDERS", "id": "ORDERS", "label": "ORDERS", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=VW_CUSTOMER_PRODUCT_SUMMARY", "id": "VW_CUSTOMER_PRODUCT_SUMMARY", "label": "VW_CUSTOMER_PRODUCT_SUMMARY", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=VW_CUSTOMER_ORDERS", "id": "VW_CUSTOMER_ORDERS", "label": "VW_CUSTOMER_ORDERS", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=ORDER_ITEMS", "id": "ORDER_ITEMS", "label": "ORDER_ITEMS", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=VW_ORDER_DETAILS_EXPANDED", "id": "VW_ORDER_DETAILS_EXPANDED", "label": "VW_ORDER_DETAILS_EXPANDED", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=PRODUCTS", "id": "PRODUCTS", "label": "PRODUCTS", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}, {"color": "#8E24AA", "href": "?node=VW_TOP_CUSTOMERS_BY_SPEND", "id": "VW_TOP_CUSTOMERS_BY_SPEND", "label": "VW_TOP_CUSTOMERS_BY_SPEND", "shape": "dot", "size": 28, "title": "Click node to pin SQL snippet"}]);
+                  edges = new vis.DataSet([{"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_WRK;", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_CO_COMMON_CDS.V_VBPA", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_CO_OM_CDS.V_VBAP", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_CO_OM_CDS.V_LIPS", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_CO_COMMON_CDS.V_VBEP", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_CO_OM_CDS.V_VBAK", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_CO_COMMON_CDS.V_EKKN", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_CO_COMMON_CDS.V_EKKO", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_GSC_COMMON_CDS.V_EKPO", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_GSC_COMMON_CDS.V_EKES", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_CO_COMMON_CDS.V_CDHDR", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_CO_COMMON_CDS.V_CDPOS", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_CO_COMMON_CDS.V_VBRK", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_CO_OM_CDS.V_VBRP", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_CO_COMMON_CDS.V_VBKD", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_CO_OM_MAIN.V_TINCT", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.MDM_S4HANA_BASE.V_TVKO", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.MDM_S4HANA_BASE.V_TVKOT", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_MDM_CDS.V_TVSBT", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.MDM_S4HANA_BASE.V_T001", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.FIN_DIM_PUBLIC.GEOGRAPHY_HIER", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_CO_COMMON_CDS.V_VBUK", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.MDM.MATERIAL_PROD_HRCY", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_CO_COMMON_CDS.V_VBUP", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "VBEP_SUM", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_CO_COMMON_CDS.V_LIKP", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "BILLING_DOCS", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "VBPA_PARTNERS", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.MDM_S4HANA_BASE.V_PA0105", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.MDM_BASE.EID_WORKFORCE", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_MDM_CDS.V_KNA1", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.MDM.GCSA_GC_CNTRYC_ALL", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.MDM.MATERIAL", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.MDM_S4HANA_BASE.V_MARC", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.MDM.MATERIAL_PLANT", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_MDM_CDS.V_T024D", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.MDM.MATERIAL_SALES_ORG", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.MDM_S4HANA_BASE.V_T001W", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PURCH_ORDER", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.GSC_LEX_PUBLIC.V_FACTORY_HOLIDAY_CAL_WORKING_DAYS)", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "CHG_LOG_VBAK_BLK", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "CHG_LOG_VBAP_BLK", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "CHG_LOG_VBEP_BLK", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "CHANGE_LOG_REJ", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_CO_COMMON_CDS.V_T630R", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_CO_OM_CDS.V_PRCD_ELEMENTS", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_CO_OM_MAIN.V_TVAKT", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_CO_COMMON_CDS.V_TVAUT", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_CO_COMMON_CDS.V_OTIF_AND_PRODAVAIL", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_CO_COMMON_CDS.V_ZSTXL", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_CO_COMMON_CDS.V_T461X", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_CO_COMMON_CDS.V_T176T", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_MDM_CDS.V_KNVV", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_CO_COMMON_CDS.V_TVFST", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_CO_COMMON_CDS.V_TVLST", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.MDM.MATERIAL_PIPO", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.CORE_COCKPIT_CDS.V_COCKPIT_CONTROL", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "LEGACY_DATA.DFTSV01.V01_FTS_BLBO", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.MDM_S4HANA_BASE.V_T151T", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "PUBLISH.GSC_COMMON_PUBLIC.V_PRIM_ULT_SPLY_LOC", "width": 1}, {"arrows": "to", "from": "SALES_DOCUMENT_MASTER_MTLZ_SP", "to": "CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_WRK", "width": 1}, {"arrows": "to", "from": "VW_CUSTOMER_ORDER_SUMMARY", "to": "CUSTOMERS", "width": 1}, {"arrows": "to", "from": "VW_CUSTOMER_ORDER_SUMMARY", "to": "ORDERS", "width": 1}, {"arrows": "to", "from": "VW_CUSTOMER_PRODUCT_SUMMARY", "to": "VW_CUSTOMER_ORDERS", "width": 1}, {"arrows": "to", "from": "VW_CUSTOMER_PRODUCT_SUMMARY", "to": "ORDERS", "width": 1}, {"arrows": "to", "from": "VW_CUSTOMER_PRODUCT_SUMMARY", "to": "ORDER_ITEMS", "width": 1}, {"arrows": "to", "from": "VW_CUSTOMER_ORDERS", "to": "CUSTOMERS", "width": 1}, {"arrows": "to", "from": "VW_CUSTOMER_ORDERS", "to": "ORDERS", "width": 1}, {"arrows": "to", "from": "VW_ORDER_DETAILS_EXPANDED", "to": "ORDERS", "width": 1}, {"arrows": "to", "from": "VW_ORDER_DETAILS_EXPANDED", "to": "CUSTOMERS", "width": 1}, {"arrows": "to", "from": "VW_ORDER_DETAILS_EXPANDED", "to": "ORDER_ITEMS", "width": 1}, {"arrows": "to", "from": "VW_ORDER_DETAILS_EXPANDED", "to": "PRODUCTS", "width": 1}, {"arrows": "to", "from": "VW_TOP_CUSTOMERS_BY_SPEND", "to": "CUSTOMERS", "width": 1}, {"arrows": "to", "from": "VW_TOP_CUSTOMERS_BY_SPEND", "to": "ORDERS", "width": 1}]);
+
+                  nodeColors = {};
+                  allNodes = nodes.get({ returnType: "Object" });
+                  for (nodeId in allNodes) {
+                    nodeColors[nodeId] = allNodes[nodeId].color;
+                  }
+                  allEdges = edges.get({ returnType: "Object" });
+                  // adding nodes and edges to the graph
+                  data = {nodes: nodes, edges: edges};
+
+                  var options = {
+    "configure": {
+        "enabled": false
+    },
+    "edges": {
+        "color": {
+            "inherit": true
+        },
+        "smooth": {
+            "enabled": true,
+            "type": "dynamic"
+        }
+    },
+    "interaction": {
+        "dragNodes": true,
+        "hideEdgesOnDrag": false,
+        "hideNodesOnDrag": false
+    },
+    "physics": {
+        "enabled": true,
+        "stabilization": {
+            "enabled": true,
+            "fit": true,
+            "iterations": 1000,
+            "onlyDynamicEdges": false,
+            "updateInterval": 50
+        }
+    }
+};
+
+                  
+
+
+                  
+
+                  network = new vis.Network(container, data, options);
+
+                  
+
+                  
+
+                  
+
+
+                  
+
+                  return network;
+
+              }
+              drawGraph();
+        </script>
+    </body>
+</html>
