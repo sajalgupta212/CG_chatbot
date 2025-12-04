@@ -1,0 +1,785 @@
+[
+  {
+    "block_id": "1",
+    "block_group": 1,
+    "block_type": "CREATE",
+    "start_block": 1,
+    "end_block": 1,
+    "parent_block_id": "",
+    "text": "CREATE OR REPLACE PROCEDURE PUBLISH_D.CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_MTLZ_SP()"
+  },
+  {
+    "block_id": "2",
+    "block_group": 2,
+    "block_type": "RETURN",
+    "start_block": 2,
+    "end_block": 2,
+    "parent_block_id": "",
+    "text": "RETURNS VARCHAR(16777216)\nLANGUAGE SQL\nEXECUTE AS OWNER\nAS\nDECLARE\n      PROCEDURE_NAME VARCHAR DEFAULT 'SALES_DOCUMENT_MASTER_MTLZ_SP';\n      TABLE_NAME VARCHAR DEFAULT 'SALES_DOCUMENT_MASTER_MTLZ';\n      PROJECT_CODE VARCHAR DEFAULT 'SALES_DOC_MASTER';\n      START_DATETIME DATETIME DEFAULT CURRENT_TIMESTAMP();\n      TABLE_SCHEMA VARCHAR DEFAULT 'CORE_CO_OM_MAIN';\n      NOTIFICATION_GROUP VARCHAR DEFAULT 'SALES_DOC_MASTER_NOTIFICATION_GROUP';"
+  },
+  {
+    "block_id": "3",
+    "block_group": 3,
+    "block_type": "BEGIN",
+    "start_block": 3,
+    "end_block": 3,
+    "parent_block_id": "",
+    "text": "BEGIN\n-- Delete Old Records"
+  },
+  {
+    "block_id": "4",
+    "block_group": 4,
+    "block_type": "DELETE",
+    "start_block": 4,
+    "end_block": 4,
+    "parent_block_id": "",
+    "text": "DELETE FROM CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_WRK;\n\n-- Insert Records into table"
+  },
+  {
+    "block_id": "5",
+    "block_group": 5,
+    "block_type": "CREATE",
+    "start_block": 5,
+    "end_block": 5,
+    "parent_block_id": "",
+    "text": "CREATE OR REPLACE TABLE  CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_WRK AS  select * from (--======================================================================================\n--S4 Sales Doc Master SQL - latest Version\n--Mod 2024-10-17 Dave - Modified Open Order Category\n--                    - Added Billing_Doc_Bill_Type, Billing_Doc_Bill_Category, ProdH fields\n--                    - Prod Group 1, 2 and Bus Unit\n--                    - changed where clause Open Sales Ind to match field case statement\n--Mod 2024-10-21 JD - Modified Shipped Not Billed Reason\n--                  - Added \"Pending POD\" value.\n--Mod 2024-10-25 DB - Added DD Date,Sched Line EDATU,WADAT, Added Rej_Ind\n--                  - Added to WITH the VBEP last sched line\n--Mod 2024-10-30 DB - Added Partners..Pricing and Ult Dest Ctry Cd\n--                    Added Dest Ctry Cd from VBRP at request of John Barkholtz\n--Mod 2024-11-14 DB - Add SOX Indicators, chgnd join to MVKE, rewrote Change Log to remove Dups\n--                    removed dup columns added when Manual Price with SOD,\n--                    field names brought to Bus standard\n--Mod 2024-11-17 DB - Added SD Item Qty BUOM, changed SOX indicator\n--Mod 2024-11-20 DB - Mod VBEP logic\n--               DB - Added fields \"Comp Code Area\",Company_Cd, Company_Cd_Name\n--               DB - Sales_Doc_Sched_Line_Conf_Qty_Sales_Unit, Sales_Doc_Sched_Line_Conf_Qty_Base_Unit,\n--               DB - Delivery_Doc_Goods_Issued_Qty_Base_Unit,Delivery_Doc_Goods_Issued_Qty_Sales_Unit\n--               DB - \"Goods Issue Net Value\", Billing_Doc_Net_Value, \"SD Item Net Value Open\"\n--Mod 2024-11-25 DB - Added \"SD Row Nbr\", \"SD Line Row Nbr\",  Sales_Doc_Item_Over_Delv_Tol_Pct\n--                  - Sales_Doc_Item_Under_Delv_Tol_Pct, Sales_Doc_Unlimited_Tolerance\n--                  - Changed Sales_Doc_Item_Ord_Qty_Base_Unit to correct formula\n--Mod 2024-12-03 DB - fixed SD Item Open Net Value logic\n--                  - Removed VBAK NETWR USD SRFR Currency logic\n--                  - added SD Item Open Qty fields\n--                          Current_Matl_Avlb_Date\n--                          \"Days Aged from DD Date\"\n--Mod 2024-12-13 DB - added Sales_Doc_Incompletion_Status, Sales_Doc_Total_Incompletion_Status\n--                  - added \"EMEA Blocked Reason Category\"\n--                  - modified Blocked_Reason after discussion with SMEs\n--                  - added GTS_Embargo_Status ,GTS_Screening_Status,\n--                  -       GTS_Legal_Control_Status , GTS Legal Control License\"\n--Mod 2025-01-03 DB -added 2nd join to VBRP, VBRK joining from Sales Doc\n--                  -added UECHA='000000' to VBAP_SUM_GI\n--                  -case statements on all VBRP and VBRK fields\n--Mod 2025-01-10 DB -added  join to V_OTIF_AND_PRODAVAIL\n--                  -added ,OTIF_Date_Original,OTIF_Date_Revised,OTIF_Measure_Date,MAD_Date_Original\n--                  -,Last_Prod_Avlb_Check_Date,Prod_Avail_Ind,Sales_Doc_Group\n--Mod 2025-01-12 DB -Added Change Log for Rejects, Chgd TimeStamp logic on both Change Logs,\n--                   Sales_Doc_Item_Reject_Date, Added Back In EKES_MAX_CONF with Purch_Order_Nbr,\n--                   Purch_Order_Item_Nbr, Purch_Order_LA_Conf_Date\n--                   added joins to STXL and fields CSR_HDR_Z002_Text,CSR_Line_Z020_Text,CSR_Line_ZMAN_Text\n--Mod 2025-01-15 DB -Modified the GTS block logic\n--            PS/DB -Added the join to the TM Header\n--                  -Added the Backlog and Backorder Indicators\n--Mod 2025-01-16 DB -Modified Sales_Doc_Item_Open_Ind and Sales_Doc_Item_Open_Category\n--Mod 2015-01-18 DB -Added Block Indicators for Stabilization and OTIF Failure analysis, Sales_Doc_Ship_Compl_Ind, EAU_UPC_Ind\n--Mod 2025-01-26 DB -Added Sales_Doc_Cust_PO_Date, changes to Block_Reason\n--Mod 2025-01-27 DB -Added Sales_Doc_Item_Create_Time,Billing_Doc_Item_Created_By\n--Mod 2025-01-29 DB -Added Backlog_Group, Sales_Rep_Nbr,Sales_Doc_Item_Tgt_Qty_Sales_Unit,Sales_Doc_Item_Tgt_Qty_Base_Unit\n--                  -Added Delivery_Doc_Volume, Delivery_Doc_Volume_Unit,Delivery_Doc_Item_Net_Value, Delivery_Doc_Item_Net_Value_USD_SRFR\n--                  -Added Days_Aged_From_OTIF_Date\n--Mod 2025-02-03 DB - Sales_Doc_Item_Goods_Issued_Value_Sum,Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR,Sales_doc_Item_Goods_Issued_Qty_BUOM_Sum\n--                  - Sales_Doc_Item_Goods_Issued_Qty_SUOM_Sum,Sales_Doc_Item_Delivery_Count,Block_Type\n--Mod 2025-02-06 DB -Material_Entered,Sales_Doc_Cust_PO_Ord_Type_Text,Sales_Doc_Item_CSR_Open_Ind,Sales_Doc_Item_CSR_Open_Category,Source_System\n--                  -Sales_Doc_Item_Net_Price,Material_Sales_LCL_Cat_ID,Cust_CSR_Acct_Group,Cust_CSR_Acct_Name\n--Mod 2025-02-14 DB -Added Company_Cd_Super_Region, Company_CD_Region, OTIF_Early_Warning, Planned_GI_Measure_Date, Days_Until_Planned_GI\n--                  -Modified Block Indicators slightly, changed Names to Block_Dlv_Invalid_Matno_Ind ,Block_Dlv_Temp_Reject_A5_Ind ,Block_Dlv_Temp_Reject_Other_Ind\n--                   Block_Dlv_80_Obsl_Plant_Ind,Block_Dlv_87_Adv_Pay_Hold_Ind,Block_Dlv_88_Cutover_Ind,Block_Dlv_89_Retrieve_Alert_Ind,Block_Dlv_91_Cust_Request_Ind\n--                   Block_Dlv_92_CSR_Hold_Ind,Block_Dlv_93_Price_Ind,Block_Dlv_94_Quality_Issue_Ind,Block_Dlv_95_EDI_NGG_Ind,Block_Dlv_96_Adv_Pay_Rqd_Ind\n--                   Block_Dlv_97_Nil_Pick_Ind,Block_Dlv_99_CSR_Review_Ind,Block_Dlv_99_Assoc_with_Delivery_Ind\n--                   Removed Blocked_Reason_Group, Block_Reason_Cd_V4\n--Mod 2025-02-19    -Added Change Log CTE's for Delivery Blocks, Last_Delivery_Block_Removed_By, Material_Sales_Delv_Plant\n--Mod 2025-02-26 DB  Added Ship_To_Country_Text\n--Mod 2025-02-28 DB\t Added MRP_Controller_Email\n--Mod 2025-03-18 DB\t Added Days_Until_OTIF,OTIF_Early_Late_Category,Days_Late_Clusters_Order,Days_Late_Clusters,Sales_Doc_Inco_Terms_1 ,Sales_Doc_Inco_Terms_2 ,Last_Billing_Block_Removed_By_User_name\n--\t\t\t\t\t Last_Delivery_Block_Removed_By_User_name, Consol_Partner , Material_Description_ARKTX,Credit_Hold_Removed_Date\n--Mod 2025-04-01 DB  Added Last_Billing_Block_Removed_Date, Last_Billing_Block_Removed_Cd, Sales_Doc_Item_Cust_PO_Ord_Type_Cd,  Sales_Doc_Billing_Block_Text, Sales_Doc_Item_Billing_Block_Text, Sales_Doc_Delivery_Block_Text\n--\t\t\t\t\t Sold_TO_City,Sold_to_Postal_Code,BD_Currency,Sales_Doc_Item_Contract_Sales_Nbr,Sales_Rep_Name,Delivery_Doc_Billing_Block_Text, Delivery_Doc_Item_Billing_Block_Text\n--Mod 2025-04-07 DB  Prod_Group_2_Cd,Prod_Group_2_Name,Prod_Group_1_Cd,Prod_Group_1_Name,Bus_Unit_Cd,Bus_Unit_Name\n--\t\t\t\t\t ,Flash_Ind,Snake_Scnd_SD_Nbr,Snake_SD_Item_Nbr,Snake_OBD_Nbr,Snake_OBD_Item_NBr,Snake_OBD_Last_Ship,Sales_Doc_Item_Delivery_Priority,PRICING_DOC_COND_NBR\n--                   ,Phase_In_Material_Nbr\n--Mod 2024-04-19 DB  Sales_Doc_Sched_Line_Delivery_Block_Text,Phase_Out_Reason_Text,Billing_Doc_Doc_Category,Billing_Doc_Price_Cond_Nbr\n--                   Created a CTE for Billing Docs\n--Mod 2024-04-23 DB  Added Material_Type_Cd  ,Sales_Doc_Item_Storage_Loc\n--Mod 2024-04-29 DB  Sales_Doc_Ship_Cond,Delivery_Doc_Ship_Cond,Interim_Sales_Order_Ind,Interim_ZINT_Ind\n--Mod 2024-05-12 DB  Sales_Doc_Ship_Cond_Text,Delivery_Doc_Ship_Cond_Text\n--Mod 2024-05-20 DB  Added Cust_Acct_Group_Text ,PO_Req_Nbr,SCND_SD_Delivery_Doc_Actual_Goods_Issued_Date ,SCND_SD_Delivery_Doc_Billing_Status\n--Mod 2024-05-22 DB  Added SDM_SCND_BLOCKED_REASON ,SCND_SDM_SALES_DOC_SHIPPING_PLANT     ,SDM_SCND_SALES_DOC_SHIPPING_PLANT_NAME,SDM_SCND_SALES_ORG_CD ,SDM_SCND_SALES_ORG_NAME\n--Mod 2024-05-27 DB  Added LAST_UPDATED_TIMESTAMP , Sales_Doc_Created_By_Name\n--Mod 2024-06-02 DB  Added Delivery_Doc_Goods_Move_Status\n--Mod 2024-06-24 DB  Added Sales_Doc_Inco_Terms_1_TEXT ,Sales_Doc_Inco_Terms_2_TEXT\n--Mod 2024-06-30 DB  Added COMS_Material_Nbr ,COMS_Doc_Nbr,COMS_Doc_Item_Nbr\n--Mod 2024-07-14 DB  Added Plant_Type,Plant_Type_desc,plant_area,Plant_Country_Name,Plant_Region,Plant_Super_Area_CD,Plant_Super_Area,Plant_Super_Region_CD,Plant_Super_Region,ULTIMATE_SUPPLY_LOCATION_CD\n--                   ,ULTIMATE_SUPPLY_LOCATION_DS,PRIMARY_SUPPLY_LOCATION_CD,PRIMARY_SUPPLY_LOCATION_DS,MRP_Controller_Desc,Sales_Doc_Cust_Req_Del_Date\n--Mod 2024-07-14 DB  Added Customer_Ind\n--Mod 2024-07-24 DB  ,ORIG_SDM_SALES_DOC_ITEM_GOODS_ISSUED_QTY_BUOM_SUM,ORIG_SDM_SALES_DOC_ITEM_GOODS_ISSUED_QTY_SUOM_SUM,SDM_SCND_SALES_DOC_ITEM_GOODS_ISSUED_QTY_BUOM_SUM,SDM_SCND_SALES_DOC_ITEM_GOODS_ISSUED_QTY_SUOM_SUM\n--\t\t\t\t\t,SDM_SCND_SALES_DOC_ITEM_NET_VALUE_USD_SRFR,SDM_SCND_SALES_DOC_ITEM_ORD_QTY_SALES_UNIT,SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE_USD_SRFR,SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE_USD_SRFR\n--Mod 2024-08-04 DB  Added Physical_Plant_Cd,Physical_Plant_Name\n--Mod 2024-08-20 DB  Added Under_Tol_Qty,Ship_Compl_Ind\n--Mod 2024-08-22 DB  Added Sales_Doc_Cust_PO_Nbr_Rel,PO_Req_Item_Nbr,Sales_Doc_Item_Sched_Line\n--Mod 2024-08-27 DB  Added monitor and alert\n--Mod 2025-09-15 DB  Added Sales_Doc_Frst_Schd_Line_CRDD,Sales_Doc_Frst_Schd_Line_Conf_Qty,Sales_Doc_Item_CRDD_Sent_Ind and modified open_category - DARTCO-1687\n--Mod 2025-09-16 DB  Modified logic for Days_Late_Clusters - (DARTCO-1702)\n--===============================================================================================================\nWITH\nVBPA_PARTNERS AS (\n    --Query below is running long when joining to then main VBPA table multiple times\n    --lets make it smaller with just what's needed"
+  },
+  {
+    "block_id": "6",
+    "block_group": 6,
+    "block_type": "SELECT",
+    "start_block": 6,
+    "end_block": 6,
+    "parent_block_id": "",
+    "text": "SELECT MANDT\n    ,VBELN\n    ,PARVW\n    ,PERNR\n    ,KUNNR\n    ,LAND1\n\t,LIFNR\n    FROM PUBLISH.CORE_CO_COMMON_CDS.V_VBPA\n    --FROM PUBLISH.CORE_CO_COMMON_CDS.V_VBPA\n    --FROM publish.co_order_management.vbpa\n    WHERE POSNR = '000000' --only the header row is needed for cust and csr info\n     -- respectively\n     -- CSR,ShipTo,BillTo,Payer,UltDestCtryCd,PricingPartner,SalesRep,CSR/Cust Group\n     -- partner descriptions can be found in TPART\n    AND PARVW in ('ZC','WE','RE','RG','YU','ZP','ZS','YG','ZT')\n),\n/*VBAP_SUM_GI AS (\n    --Created a SD Item level table with Summed Goods Issued Value and Qty's"
+  },
+  {
+    "block_id": "7",
+    "block_group": 7,
+    "block_type": "SELECT",
+    "start_block": 7,
+    "end_block": 7,
+    "parent_block_id": "",
+    "text": "SELECT VBAP.MANDT\n    ,VBAP.VBELN\n    ,VBAP.POSNR\n    ,SUM(COALESCE(LIPS.GOODS_ISSUED_NET_VALUE,0))          as Sales_Doc_Item_Goods_Issued_Value_Sum\n    --,SUM(COALESCE(LIPS.GOODS_ISSUED_NET_VALUE_USD_SRFR,0)) as Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR\n\t--,SUM(COALESCE(LIPS.GOODS_ISSUED_NET_VALUE_USD_DOC_DT_FIXED_SRFR,0)) as Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR\n\t,SUM(COALESCE(LIPS.GOODS_ISSUED_NET_VALUE_USD_DOC_DT_DYNAMIC_SRFR,0)) as Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR\n    ,SUM(COALESCE(LIPS.GOODS_ISSUE_QTY_BUOM,0))            as Sales_Doc_Item_Goods_Issued_Qty_BUOM_Sum\n    ,SUM(COALESCE(LIPS.GOODS_ISSUE_QTY_SUOM,0))            as Sales_Doc_Item_Goods_Issued_Qty_SUOM_Sum\n    ,COUNT(DISTINCT LIPS.VBELN)                            as Sales_Doc_Item_Delivery_Count\n    FROM PUBLISH.CORE_CO_OM_CDS.V_VBAP VBAP\n    LEFT JOIN  PUBLISH.CORE_CO_OM_CDS.V_LIPS LIPS\n     ON VBAP.MANDT = LIPS.MANDT\n    AND VBAP.VBELN = LIPS.VGBEL\n    AND VBAP.POSNR = LIPS.VGPOS\n    --AND LIPS.VGTYP = 'C' --limit to Del Docs created by Sales Doc\n    AND LIPS.UECHA = '000000' --Only Master Row\n\tand (LIPS.KCMENG + LIPS.LGMNG) >0\n    GROUP BY ALL\n),*/\n/*VBEP_MR AS ( --\n    -- limit VBEP (SD Sched Line) to Most Recent (MR) Sched Line (ETENR DESC) as there's no accurate way to Join VBEP to LIPS\n    -- since ETENR is not in LIPS."
+  },
+  {
+    "block_id": "8",
+    "block_group": 8,
+    "block_type": "SELECT",
+    "start_block": 8,
+    "end_block": 8,
+    "parent_block_id": "",
+    "text": "SELECT V.MANDT\n    ,V.VBELN\n    ,V.POSNR\n    ,V.ETENR -- sched line\n    ,V.MBDAT -- Mat avlb date\n    ,V.WADAT -- planned gi date\n    ,V.EDATU -- cust requested del date\n    ,V.LIFSP -- delivery block\n\t,V.BANFN\n\t,V.BNFPO -- Purchase Req Item\n    FROM PUBLISH.CORE_CO_COMMON_CDS.V_VBEP V\n    --WHERE V.BMENG > 0\n    QUALIFY ROW_NUMBER() OVER(PARTITION BY V.VBELN, V.POSNR ORDER BY V.ETENR DESC) = 1\n),*/\nVBEP_SUM AS (\n    -- limit VBEP (SD Sched Line) to one row - Summing Conf Qty\n    -- there is a new field on VBAP with S4 that might be this summed-cum amount?"
+  },
+  {
+    "block_id": "9",
+    "block_group": 9,
+    "block_type": "SELECT",
+    "start_block": 9,
+    "end_block": 9,
+    "parent_block_id": "",
+    "text": "SELECT VBEP.MANDT\n    ,VBEP.VBELN\n    ,VBEP.POSNR\n    ,SUM(VBEP.BMENG) as BMENG_SUM  -- Conf Qty Sales Unit\n    ,SUM(CASE WHEN VBEP.UMVKN <> 0 then ROUND(VBEP.BMENG*(VBEP.UMVKZ / VBEP.UMVKN)) ELSE 0 END) AS Conf_Qty_Sum_BUOM  -- Base Unit\n    FROM PUBLISH.CORE_CO_COMMON_CDS.V_VBEP VBEP\n    WHERE VBEP.BMENG > 0  --consider only rows with conf qty\n    GROUP BY ALL\n    --QUALIFY ROW_NUMBER() OVER(PARTITION BY V.VBELN, V.POSNR ORDER BY V.ETENR DESC) = 1\n),\nPURCH_ORDER AS ("
+  },
+  {
+    "block_id": "10",
+    "block_group": 10,
+    "block_type": "SELECT",
+    "start_block": 10,
+    "end_block": 10,
+    "parent_block_id": "",
+    "text": "SELECT VBAP.MANDT\n    ,VBAP.VBELN\n    ,VBAP.POSNR\n    ,VBAP.VSTEL\n    ,vbap.werks\n    ,VBAK.AUART\n    ,VBAP.PSTYV\n    ,EKPO.EBELN as Purch_Order_Nbr\n    ,EKPO.EBELP as Purch_Order_Item_Nbr\n    ,EKKO.UNSEZ as Purch_Order_Our_Ref\n    --,EKES_LA.VBELN as Purch_Order_Inb_Dlv_Doc\n    --,EKES_LA.VBELP as Purch_Order_Inb_Dlv_Doc_Item\n    ,MAX(TRY_TO_DATE(EKES_AB.EINDT,'YYYYMMDD'))  as Purch_Order_Conf_Date_AB_Max\n    ,MAX(TRY_TO_DATE(EKES_LA.EINDT,'YYYYMMDD'))  as Purch_Order_Conf_Date_LA_Max\n    -- PUBLISH_Q.CORE_GSC_COMMON_MAIN.V_EKKO\n    --,VBFA.VBELN as purch_order_nbr\n    --,VBFA.POSNN as purch_order_item_nbr\n    -- AB records are sent by vendor to acknowledge receipt and contains an est deliver date (eindt)\n    -- LA records are sent by vendor to confirm the delivery schedule and contains a more\n    --   accurate delivery date (eindt), there can be more than one LA if they ship more than once\n    --,TRY_TO_DATE(ekes.eindt,'YYYYMMDD')) as purch_order_LA_conf_date\n    from       PUBLISH.CORE_CO_OM_CDS.V_VBAK VBAK\n    inner join PUBLISH.CORE_CO_OM_CDS.V_VBAP VBAP\n    on vbak.vbeln = vbap.vbeln\n    inner join PUBLISH.CORE_CO_COMMON_CDS.V_EKKN EKKN\n    on  EKKN.VBELN = VBAP.VBELN\n    and EKKN.VBELP = VBAP.POSNR\n    --inner join PUBLISH.CORE_CO_COMMON_CDS.V_VBFA VBFA  -- Doc flow table\n    --on  vbap.vbeln = vbfa.vbelv\n    --and vbap.posnr = vbfa.posnv\n    --and vbfa.vbtyp_n = 'V'  --only Sales Doc to Purch Doc scenario\n    inner join PUBLISH.CORE_CO_COMMON_CDS.V_EKKO EKKO  --not in GSC for some reason\n    on  EKKO.EBELN = EKKN.EBELN\n    inner join PUBLISH.CORE_GSC_COMMON_CDS.V_EKPO EKPO\n    on  EKPO.EBELN = EKKN.EBELN\n    and EKPO.EBELP = right(EKKN.EBELP,5)       --PO Lines have one less leading zero\n    left join PUBLISH.CORE_GSC_COMMON_CDS.V_EKES EKES_AB  --PO Conf table\n    on  ekes_ab.ebeln = EKPO.ebeln\n    and ekes_ab.ebelp = EKPO.ebelp\n    and ekes_ab.ebtyp = 'AB'  -- there are AB and LA records - just AB (Vendor Recv Conf) for this join\n    left join PUBLISH.CORE_GSC_COMMON_CDS.V_EKES EKES_LA  --PO Conf table\n    on  ekes_la.ebeln = ekpo.ebeln\n    and ekes_la.ebelp = ekpo.ebelp\n    and ekes_la.ebtyp = 'LA'      -- there are AB and LA records - just LA (Vendor Shipped Conf) for this join\n    and ekes_la.uecha = '000000'  --only need/want batch master row\n\tWHERE EKPO.LOEKZ<>'L'\n\t--AND VBAP.PSTYV in ('ZTIF','ZTN3','ZKC3','ZS3M','ZKCD')\n    --where 1=1\n    group by all\n    --)\n    --group by all\n    --having count(*) > 1\n),\n\nCHG_LOG_VBAK_BLK as (\n    --pick up change log data for VBAK changes - join to this will be on Sales Doc Only"
+  },
+  {
+    "block_id": "11",
+    "block_group": 11,
+    "block_type": "SELECT",
+    "start_block": 11,
+    "end_block": 11,
+    "parent_block_id": "",
+    "text": "SELECT CDHDR.OBJECTCLAS\n    ,CDHDR.OBJECTID          as Sales_Doc_Nbr  --Sales Doc Nbr\n    --,CDPOS.TABKEY\n    --,CDHDR.CHANGENR\n    ,TRY_TO_DATE(CDHDR.UDATE,'YYYYMMDD') as Remove_Date\n    ,TRY_TO_TIME(CDHDR.UTIME)            as Remove_Time\n    ,TIMESTAMP_FROM_PARTS(DATE(CDHDR.UDATE,'YYYYMMDD'),TRY_TO_TIME(CDHDR.UTIME)) as Remove_Time_Stamp\n    ,CDHDR.TCODE\n    ,CDHDR.USERNAME\n    ,CDPOS.TABNAME\n    ,CDPOS.FNAME\n    ,CDPOS.CHNGIND\n    ,CDPOS.VALUE_OLD\n    ,CDPOS.VALUE_NEW\n    FROM PUBLISH.CORE_CO_COMMON_CDS.V_CDHDR CDHDR           -- change log header\n    INNER JOIN  PUBLISH.CORE_CO_COMMON_CDS.V_CDPOS  CDPOS   -- change log item\n      --join on keys common to both tables\n      ON  CDHDR.OBJECTCLAS = CDPOS.OBJECTCLAS\n      AND CDHDR.OBJECTID   = CDPOS.OBJECTID\n      AND CDHDR.CHANGENR   = CDPOS.CHANGENR\n    WHERE CDHDR.OBJECTCLAS = 'VERKBELEG'  --only Sales Docs changes\n    --AND CDHDR.TCODE   = 'VA02'  --only Tcode used to modify Sales Docs\n    AND CDPOS.TABNAME = 'VBAK'\n    --            Credit  Delvry  Billing\n    AND ( (FNAME = 'LIFSK' AND VALUE_OLD between '80' and '99' and VALUE_NEW = ''    )\n      OR  (FNAME = 'CMGST' AND VALUE_OLD in ('B','C') and VALUE_NEW Not In ('B','C') )\n      OR  (FNAME = 'FAKSK' AND VALUE_OLD between 'Z1' and 'ZY' and VALUE_NEW = ''    )  )\n     --('CMGST','LIFSK','FAKSK')\n    QUALIFY ROW_NUMBER() OVER (PARTITION BY CDHDR.OBJECTID,FNAME ORDER BY\n            TIMESTAMP_FROM_PARTS(DATE(CDHDR.UDATE,'YYYYMMDD'),TRY_TO_TIME(CDHDR.UTIME)) DESC) = 1\n),\nCHG_LOG_VBEP_BLK as (\n    --Change Log for Delivery Blocks at Sched Line Level but we only need to find latest at Line Level"
+  },
+  {
+    "block_id": "12",
+    "block_group": 12,
+    "block_type": "SELECT",
+    "start_block": 12,
+    "end_block": 12,
+    "parent_block_id": "",
+    "text": "SELECT CDHDR.OBJECTCLAS\n    ,CDHDR.OBJECTID              as Sales_Doc_Nbr\n    ,CDPOS.TABKEY\n    ,SUBSTR(CDPOS.TABKEY,14,6)   as Sales_Doc_Item_Nbr\n    ,CDHDR.CHANGENR\n    ,TRY_TO_DATE(CDHDR.UDATE,'YYYYMMDD') as Remove_Date\n    ,TRY_TO_TIME(CDHDR.UTIME)            as Remove_Time\n    ,TIMESTAMP_FROM_PARTS(DATE(CDHDR.UDATE,'YYYYMMDD'),TRY_TO_TIME(CDHDR.UTIME)) as Remove_Time_Stamp\n    ,CDHDR.TCODE\n    ,CDHDR.USERNAME\n    ,CDPOS.TABNAME\n    ,CDPOS.FNAME\n    ,CDPOS.CHNGIND\n    ,CDPOS.VALUE_OLD\n    ,CDPOS.VALUE_NEW\n    FROM PUBLISH.CORE_CO_COMMON_CDS.V_CDHDR CDHDR       -- change log header\n    INNER JOIN PUBLISH.CORE_CO_COMMON_CDS.V_CDPOS  CDPOS   -- change log item\n      --join on keys common to both tables\n      ON  CDHDR.OBJECTCLAS = CDPOS.OBJECTCLAS\n      AND CDHDR.OBJECTID   = CDPOS.OBJECTID\n      AND CDHDR.CHANGENR   = CDPOS.CHANGENR\n    WHERE CDHDR.OBJECTCLAS = 'VERKBELEG'  --only Sales Docs changes\n    AND CDPOS.TABNAME = 'VBEP'\n    --AND CDHDR.TCODE   = 'VA02'  --only Tcode used to modify Sales Docs\n    AND CDPOS.FNAME = 'LIFSP'\n    AND CDPOS.VALUE_OLD between '80' and '99'\n    AND CDPOS.VALUE_NEW = ''\n    --AND CDPOS.VALUE_NEW = ''\n    QUALIFY ROW_NUMBER() OVER (PARTITION BY CDHDR.OBJECTID,SUBSTR(CDPOS.TABKEY,14,6) ORDER BY\n            TIMESTAMP_FROM_PARTS(DATE(CDHDR.UDATE,'YYYYMMDD'),TRY_TO_TIME(CDHDR.UTIME)) DESC) = 1\n),\nCHG_LOG_VBAP_BLK as (\n    --Change Log for Billing Blocks in VBAP at Line Level"
+  },
+  {
+    "block_id": "13",
+    "block_group": 13,
+    "block_type": "SELECT",
+    "start_block": 13,
+    "end_block": 13,
+    "parent_block_id": "",
+    "text": "SELECT CDHDR.OBJECTCLAS\n    ,CDHDR.OBJECTID          as Sales_Doc_Nbr\n    ,CDPOS.TABKEY\n    ,RIGHT(CDPOS.TABKEY,6)   as Sales_Doc_Item_Nbr\n    ,CDHDR.CHANGENR\n    ,TRY_TO_DATE(CDHDR.UDATE,'YYYYMMDD') as Remove_Date\n    ,TRY_TO_TIME(CDHDR.UTIME)            as Remove_Time\n    ,TIMESTAMP_FROM_PARTS(DATE(CDHDR.UDATE,'YYYYMMDD'),TRY_TO_TIME(CDHDR.UTIME)) as Remove_Time_Stamp\n    ,CDHDR.TCODE\n    ,CDHDR.USERNAME\n    ,CDPOS.TABNAME\n    ,CDPOS.FNAME\n    ,CDPOS.CHNGIND\n    ,CDPOS.VALUE_OLD\n    ,CDPOS.VALUE_NEW\n    FROM PUBLISH.CORE_CO_COMMON_CDS.V_CDHDR CDHDR       -- change log header\n    INNER JOIN PUBLISH.CORE_CO_COMMON_CDS.V_CDPOS  CDPOS   -- change log item\n      --join on keys common to both tables\n      ON  CDHDR.OBJECTCLAS = CDPOS.OBJECTCLAS\n      AND CDHDR.OBJECTID   = CDPOS.OBJECTID\n      AND CDHDR.CHANGENR   = CDPOS.CHANGENR\n    WHERE CDHDR.OBJECTCLAS = 'VERKBELEG'  --only Sales Docs changes\n    AND CDPOS.TABNAME = 'VBAP'\n    --AND CDHDR.TCODE   = 'VA02'  --only Tcode used to modify Sales Docs\n    AND CDPOS.FNAME = 'FAKSP'     --Billing Block for Line\n    AND CDPOS.VALUE_OLD between 'Z1' and 'ZY'\n    AND CDPOS.VALUE_NEW = ''\n    QUALIFY ROW_NUMBER() OVER (PARTITION BY CDHDR.OBJECTID,RIGHT(CDPOS.TABKEY,6) ORDER BY\n            TIMESTAMP_FROM_PARTS(DATE(CDHDR.UDATE,'YYYYMMDD'),TRY_TO_TIME(CDHDR.UTIME)) DESC) = 1\n),\nCHANGE_LOG_REJ as ("
+  },
+  {
+    "block_id": "14",
+    "block_group": 14,
+    "block_type": "SELECT",
+    "start_block": 14,
+    "end_block": 14,
+    "parent_block_id": "",
+    "text": "SELECT CDHDR.OBJECTCLAS\n    ,CDHDR.OBJECTID          as Sales_Doc_Nbr  --Sales Doc Nbr\n    ,CDPOS.TABKEY\n    ,RIGHT(CDPOS.TABKEY,6)   as Sales_Doc_Item_Nbr\n    ,CDHDR.CHANGENR\n    ,TRY_TO_DATE(CDHDR.UDATE,'YYYYMMDD') as Reject_Date\n    ,TRY_TO_TIME(CDHDR.UTIME)            as Reject_Time\n    ,TIMESTAMP_FROM_PARTS(DATE(CDHDR.UDATE,'YYYYMMDD'),TRY_TO_TIME(CDHDR.UTIME)) as CLTIMESTAMP\n    ,CDHDR.TCODE\n    ,CDHDR.USERNAME\n    ,CDPOS.TABNAME\n    ,CDPOS.FNAME\n    ,CDPOS.CHNGIND\n    ,CDPOS.VALUE_OLD\n    ,CDPOS.VALUE_NEW\n    FROM PUBLISH.CORE_CO_COMMON_CDS.V_CDHDR CDHDR       -- change log header\n    --INNER JOIN LEGACY_DATA.SAPERP.CDPOS CDPOS -- change log Item\n    INNER JOIN PUBLISH.CORE_CO_COMMON_CDS.V_CDPOS  CDPOS   -- change log item\n      --join on keys common to both tables\n      ON  CDHDR.OBJECTCLAS = CDPOS.OBJECTCLAS\n      AND CDHDR.OBJECTID   = CDPOS.OBJECTID\n      AND CDHDR.CHANGENR   = CDPOS.CHANGENR\n    WHERE CDHDR.OBJECTCLAS = 'VERKBELEG'  --only Sales Docs\n    --AND CDHDR.TCODE   = 'VA02'   --Tcode used to modify Sales Docs\n    AND CDPOS.TABNAME in ('VBAP')  --only changed in Sales Doc Line (VBAP)\n    AND CDPOS.FNAME   in ('ABGRU') --only Reject Code changes\n    AND CDPOS.VALUE_OLD = ''       --select when the old value was empty\n\n    QUALIFY ROW_NUMBER() OVER (PARTITION BY CDHDR.OBJECTID,RIGHT(CDPOS.TABKEY,6) ORDER BY\n            TIMESTAMP_FROM_PARTS(DATE(CDHDR.UDATE,'YYYYMMDD'),TRY_TO_TIME(CDHDR.UTIME)) DESC) = 1\n),\n\n--**\nBILLING_DOCS as ( --Join the Billing Doc tabls together including only Customer Invoice Billings"
+  },
+  {
+    "block_id": "15",
+    "block_group": 15,
+    "block_type": "SELECT",
+    "start_block": 15,
+    "end_block": 15,
+    "parent_block_id": "",
+    "text": "SELECT vbrp.mandt\n    ,vbrp.vgbel\n    ,vbrp.vgpos\n    ,vbrp.vbeln\n    ,vbrp.vgtyp\n    ,vbrp.posnr\n    ,VBRK.FKDAT\n    ,VBRK.FKART\n    ,VBRK.FKTYP\n    ,VBRK.VBTYP\n    ,VBRK.WAERK\n    ,VBRK.RFBSK\n    ,VBRK.KNUMV\n    ,VBRK.NETWR as VBRK_NETWR\n    ,VBRP.NETWR as VBRP_NETWR\n    ,VBRP.NETWR_USD_DOC_DT_FIXED_SRFR\n    --,VBRP.NETWR_USD_DOC_DT_FIXED_SRFR as VBRP_NETWR_USD_SRFR\n\t,VBRP.NETWR_USD_DOC_DT_DYNAMIC_SRFR as VBRP_NETWR_USD_SRFR\n   -- ,VBRK.NETWR_USD_SRFR as \tVBRK_NETWR_USD_SRFR\n    ,TRY_TO_DATE(VBRP.ERDAT,'YYYYMMDD') as ERDAT\n    --,VBRP.NETWR_USD_DOC_DT_FIXED_SRFR\n    ,VBRP.LLAND_AUFT\n    ,VBRP.FKLMG\n    ,VBRP.FKIMG\n    ,VBRP.ERNAM\n    ,TRY_TO_DATE(VBRP.PRSDT,'YYYYMMDD') as PRSDT\n    ,vbrp.LOCAL_CURR\n    FROM PUBLISH.CORE_CO_COMMON_CDS.V_VBRK vbrk\n    INNER JOIN PUBLISH.CORE_CO_OM_CDS.V_VBRP vbrp\n    ON vbrp.vbeln = vbrk.vbeln\n    WHERE vbrk.vbtyp in ('M','O','P') --only inclue Billing Docs that represent the Customer Invoice, eliminate Flashing\n      AND vbrk.fksto <> 'X'            --remove canceled lines\n\t  and VBRK.FKART Not In ('ZIDV') --remove Double Flash billing doc type\n)\n\n\n-- Main logic - goes to Billing Line Level"
+  },
+  {
+    "block_id": "16",
+    "block_group": 16,
+    "block_type": "SELECT",
+    "start_block": 16,
+    "end_block": 16,
+    "parent_block_id": "",
+    "text": "SELECT 'S4' as Source_System\n,Sales_Doc_Nbr\n,Sales_Doc_Item_Nbr\n,CONCAT(Sales_Doc_Nbr,Sales_Doc_Item_Nbr) as Sales_Doc_Nbr_Item_Concat\n,Sales_Org_Cd\n,Sales_Org_Name\n,Sales_Doc_Category_Cd\n,Sales_Doc_Row_Nbr\n,Sales_Doc_Line_Row_Nbr\n,Sales_Doc_Line_Del_Row_Nbr\n,Sales_Doc_Type_Cd\n,Sales_Doc_Type_Name\n,Sales_Doc_Created_By\n,Sales_Doc_Order_Reason_Cd\n,Sales_Doc_Dist_Chan\n,Record_Create_Date\n,Sales_Doc_Create_Date\n,Sales_Doc_Item_Create_Date\n,Sales_Doc_Item_Create_Time\n,Sales_Doc_Cust_PO_Ord_Type_Cd\n,Sales_Doc_Item_Cust_PO_Ord_Type_Cd\n,Sales_Doc_Cust_PO_Date\n,case when Sales_Doc_Row_Nbr = 1 then Sales_Doc_Net_Value else 0 end as Sales_Doc_Net_Value\n--Payal substracted GIVS from the wrong field, should be subtracted from the SD Item Net Value\n--,Sales_Doc_Net_Value - \"Goods Issued Value Sum\"  as \"SD Item Open Net Value (Goods Issued)\"\n,Material_Nbr\n,Material_Name\n,EAN_UPC_Nbr\n,Curr_Date\n,Sales_Doc_Item_Work_Days_Open\n,Sales_Doc_Item_Work_Days_Open_Category\n,Conv_Factor_Numerator\n,Conv_Factor_Denominator\n,Base_Unit\n,Sales_Unit\n,Sales_Doc_Currency\n,Sales_Doc_Item_Category_Cd\n,Sales_Doc_Item_Created_By\n,Sales_Doc_Item_Prec_Doc_Nbr\n,Sales_Doc_Item_Prec_Doc_Item\n,Sales_Doc_Item_Ship_Point\n,Sales_Doc_Item_Route\n,Sales_Doc_Unlimited_Tolerance\n,Sales_Doc_Item_Over_Delv_Tol_Pct\n,Sales_Doc_Item_Under_Delv_Tol_Pct\n\n--present these fields on the first row for the SD Line only so the field is summable\n,case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Item_Net_Value             else 0 end as Sales_Doc_Item_Net_Value\n,case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Item_Net_Value_USD_SRFR    else 0 end as Sales_Doc_Item_Net_Value_USD_SRFR\n,case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Item_Delivery_Count        else 0 end as Sales_Doc_Item_Delivery_Count\n,case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Item_Goods_Issued_Value_Sum else 0 end as Sales_Doc_Item_Goods_Issued_Value_Sum\n,case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR else 0 end as Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR\n,case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Item_Goods_Issued_Qty_BUOM_Sum       else 0 end as Sales_Doc_Item_Goods_Issued_Qty_BUOM_Sum\n,case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Item_Goods_Issued_Qty_SUOM_Sum       else 0 end as Sales_Doc_Item_Goods_Issued_Qty_SUOM_Sum\n\n,case when Sales_Doc_Line_Row_Nbr = 1 and Sales_Doc_Item_Open_Ind = 'Y'  /*Sales_Doc_Item_Goods_Issued_Value_Sum <= Sales_Doc_Item_Net_Value */\n   then (Sales_Doc_Item_Net_Value - Sales_Doc_Item_Goods_Issued_Value_Sum)"
+  },
+  {
+    "block_id": "17",
+    "block_group": 17,
+    "block_type": "ELSE",
+    "start_block": 17,
+    "end_block": 17,
+    "parent_block_id": "",
+    "text": "else 0 end as Sales_Doc_Item_Open_Net_Value\n\n,case when Sales_Doc_Line_Row_Nbr = 1 and Sales_Doc_Item_Open_Ind = 'Y'  /*Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR <= Sales_Doc_Item_Net_Value_USD_SRFR */\n   then (Sales_Doc_Item_Net_Value_USD_SRFR - Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR)"
+  },
+  {
+    "block_id": "18",
+    "block_group": 18,
+    "block_type": "ELSE",
+    "start_block": 18,
+    "end_block": 18,
+    "parent_block_id": "",
+    "text": "else 0 end as Sales_Doc_Item_Open_Net_Value_USD_SRFR\n\n/*,case when Sales_Doc_Line_Row_Nbr = 1 and Sales_Doc_Item_Goods_Issued_Value_Sum <= Sales_Doc_Item_Net_Value\n   and backlog_ind = 'Y' then (Sales_Doc_Item_Net_Value - Sales_Doc_Item_Goods_Issued_Value_Sum)"
+  },
+  {
+    "block_id": "19",
+    "block_group": 19,
+    "block_type": "ELSE",
+    "start_block": 19,
+    "end_block": 19,
+    "parent_block_id": "",
+    "text": "else 0 end as Sales_Doc_Item_Backlog_Net_Value\n\n,case when Sales_Doc_Line_Row_Nbr = 1 and Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR <= Sales_Doc_Item_Net_Value_USD_SRFR\n   and backlog_Ind = 'Y' then (Sales_Doc_Item_Net_Value_USD_SRFR - Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR)"
+  },
+  {
+    "block_id": "20",
+    "block_group": 20,
+    "block_type": "ELSE",
+    "start_block": 20,
+    "end_block": 20,
+    "parent_block_id": "",
+    "text": "else 0 end as Sales_Doc_Item_Backlog_Net_Value_USD_SRFR\n\n,case when Sales_Doc_Line_Row_Nbr = 1 and Sales_Doc_Item_Goods_Issued_Value_Sum <= Sales_Doc_Item_Net_Value\n   and backorder_ind = 'Y' then (Sales_Doc_Item_Net_Value - Sales_Doc_Item_Goods_Issued_Value_Sum)"
+  },
+  {
+    "block_id": "21",
+    "block_group": 21,
+    "block_type": "ELSE",
+    "start_block": 21,
+    "end_block": 21,
+    "parent_block_id": "",
+    "text": "else 0 end as Sales_Doc_Item_BackOrder_Net_Value\n\n,case when Sales_Doc_Line_Row_Nbr = 1 and Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR <= Sales_Doc_Item_Net_Value_USD_SRFR\n   and backorder_Ind = 'Y' then (Sales_Doc_Item_Net_Value_USD_SRFR - Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR)"
+  },
+  {
+    "block_id": "22",
+    "block_group": 22,
+    "block_type": "ELSE",
+    "start_block": 22,
+    "end_block": 22,
+    "parent_block_id": "",
+    "text": "else 0 end as Sales_Doc_Item_BackOrder_Net_Value_USD_SRFR */ -- old logic till 07/23\n\n\n, CASE\nWHEN Sales_Doc_Line_Row_Nbr = 1 and backlog_ind =  'Y'  and SNAKE_SCND_SD_NBR IS  NULL\nthen (Sales_Doc_Item_Net_Value - Sales_Doc_Item_Goods_Issued_Value_Sum)\nwhen Sales_Doc_Line_Row_Nbr = 1 and backlog_ind =  'Y' and SNAKE_SCND_SD_NBR IS NOT NULL\nTHEN\n(case\nwhen SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE=0 or SDM_SCND_SALES_DOC_ITEM_NET_VALUE =0\nthen SALES_DOC_ITEM_NET_VALUE"
+  },
+  {
+    "block_id": "23",
+    "block_group": 23,
+    "block_type": "ELSE",
+    "start_block": 23,
+    "end_block": 23,
+    "parent_block_id": "",
+    "text": "else (SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE /SDM_SCND_SALES_DOC_ITEM_NET_VALUE) * SALES_DOC_ITEM_NET_VALUE\nend)"
+  },
+  {
+    "block_id": "24",
+    "block_group": 24,
+    "block_type": "ELSE",
+    "start_block": 24,
+    "end_block": 24,
+    "parent_block_id": "",
+    "text": "else 0 END as Sales_Doc_Item_Backlog_Net_Value\n\n, CASE\nWHEN Sales_Doc_Line_Row_Nbr = 1 and backlog_ind =  'Y'  and SNAKE_SCND_SD_NBR IS  NULL\nthen (Sales_Doc_Item_Net_Value_USD_SRFR - Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR)\nwhen Sales_Doc_Line_Row_Nbr = 1 and backlog_ind =  'Y' and SNAKE_SCND_SD_NBR IS NOT NULL\nTHEN\n(case\nwhen SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE_USD_SRFR=0 or SDM_SCND_SALES_DOC_ITEM_NET_VALUE_USD_SRFR =0\nthen SALES_DOC_ITEM_NET_VALUE_USD_SRFR"
+  },
+  {
+    "block_id": "25",
+    "block_group": 25,
+    "block_type": "ELSE",
+    "start_block": 25,
+    "end_block": 25,
+    "parent_block_id": "",
+    "text": "else (SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE_USD_SRFR /SDM_SCND_SALES_DOC_ITEM_NET_VALUE_USD_SRFR) * SALES_DOC_ITEM_NET_VALUE_USD_SRFR\nend)"
+  },
+  {
+    "block_id": "26",
+    "block_group": 26,
+    "block_type": "ELSE",
+    "start_block": 26,
+    "end_block": 26,
+    "parent_block_id": "",
+    "text": "else 0 END as Sales_Doc_Item_Backlog_Net_Value_USD_SRFR\n,\nCASE\nWHEN Sales_Doc_Line_Row_Nbr = 1 and backorder_ind =  'Y'  and SNAKE_SCND_SD_NBR IS  NULL\nthen (Sales_Doc_Item_Net_Value - Sales_Doc_Item_Goods_Issued_Value_Sum)\nwhen Sales_Doc_Line_Row_Nbr = 1 and backorder_ind =  'Y' and SNAKE_SCND_SD_NBR IS NOT NULL\nTHEN\n(case when SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE=0 or SDM_SCND_SALES_DOC_ITEM_NET_VALUE =0\nthen SALES_DOC_ITEM_NET_VALUE else\nDIV0NULL(SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE ,SDM_SCND_SALES_DOC_ITEM_NET_VALUE) * SALES_DOC_ITEM_NET_VALUE\nend)"
+  },
+  {
+    "block_id": "27",
+    "block_group": 27,
+    "block_type": "ELSE",
+    "start_block": 27,
+    "end_block": 27,
+    "parent_block_id": "",
+    "text": "else 0 END as Sales_Doc_Item_Backorder_Net_Value\n\n, CASE\nWHEN Sales_Doc_Line_Row_Nbr = 1 and backorder_ind =  'Y'  and SNAKE_SCND_SD_NBR IS  NULL\nthen (Sales_Doc_Item_Net_Value_USD_SRFR - Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR)\nwhen Sales_Doc_Line_Row_Nbr = 1 and backorder_ind =  'Y' and SNAKE_SCND_SD_NBR IS NOT NULL\nTHEN\n(case\nwhen SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE_USD_SRFR=0 or SDM_SCND_SALES_DOC_ITEM_NET_VALUE_USD_SRFR =0\nthen SALES_DOC_ITEM_NET_VALUE_USD_SRFR"
+  },
+  {
+    "block_id": "28",
+    "block_group": 28,
+    "block_type": "ELSE",
+    "start_block": 28,
+    "end_block": 28,
+    "parent_block_id": "",
+    "text": "else DIV0NULL(SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE_USD_SRFR ,SDM_SCND_SALES_DOC_ITEM_NET_VALUE_USD_SRFR) * SALES_DOC_ITEM_NET_VALUE_USD_SRFR\nend)"
+  },
+  {
+    "block_id": "29",
+    "block_group": 29,
+    "block_type": "ELSE",
+    "start_block": 29,
+    "end_block": 29,
+    "parent_block_id": "",
+    "text": "else 0 END as Sales_Doc_Item_BackOrder_Net_Value_USD_SRFR\n\n\n /*,CASE  WHEN Sales_Doc_Line_Row_Nbr = 1 and SNAKE_SCND_SD_NBR IS NOT NULL AND (SDM_SCND_SALES_DOC_ITEM_NET_VALUE = 0 OR SDM_SCND_SALES_DOC_ITEM_NET_VALUE IS NULL)\nTHEN ( coalesce(SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE,Sales_Doc_Item_Net_Value - Sales_Doc_Item_Goods_Issued_Value_Sum) )\nWHEN SNAKE_SCND_SD_NBR IS NOT NULL\nTHEN DIV0NULL(SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE , SDM_SCND_SALES_DOC_ITEM_NET_VALUE) * SALES_DOC_ITEM_NET_VALUE"
+  },
+  {
+    "block_id": "30",
+    "block_group": 30,
+    "block_type": "ELSE",
+    "start_block": 30,
+    "end_block": 30,
+    "parent_block_id": "",
+    "text": "ELSE ( coalesce(SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE,Sales_Doc_Item_Net_Value - Sales_Doc_Item_Goods_Issued_Value_Sum) )\nEND as Sales_Doc_Item_Backlog_Net_Value\n\n,CASE  WHEN Sales_Doc_Line_Row_Nbr = 1 and SNAKE_SCND_SD_NBR IS NOT NULL AND (SDM_SCND_SALES_DOC_ITEM_NET_VALUE_USD_SRFR = 0 OR SDM_SCND_SALES_DOC_ITEM_NET_VALUE_USD_SRFR IS NULL)\nTHEN ( coalesce(SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE_USD_SRFR,Sales_Doc_Item_Net_Value_USD_SRFR - Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR) )\nWHEN SNAKE_SCND_SD_NBR IS NOT NULL\nTHEN DIV0NULL(SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE_USD_SRFR , SDM_SCND_SALES_DOC_ITEM_NET_VALUE_USD_SRFR) * SALES_DOC_ITEM_NET_VALUE_USD_SRFR"
+  },
+  {
+    "block_id": "31",
+    "block_group": 31,
+    "block_type": "ELSE",
+    "start_block": 31,
+    "end_block": 31,
+    "parent_block_id": "",
+    "text": "ELSE ( coalesce(SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE_USD_SRFR,Sales_Doc_Item_Net_Value_USD_SRFR - Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR) )\nEND as Sales_Doc_Item_Backlog_Net_Value_USD_SRFR\n\n,CASE WHEN Sales_Doc_Line_Row_Nbr = 1 and SNAKE_SCND_SD_NBR IS NOT NULL AND (SDM_SCND_SALES_DOC_ITEM_NET_VALUE = 0 OR SDM_SCND_SALES_DOC_ITEM_NET_VALUE IS NULL)\nTHEN coalesce(SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE,(Sales_Doc_Item_Net_Value - Sales_Doc_Item_Goods_Issued_Value_Sum) )\nWHEN SNAKE_SCND_SD_NBR IS NOT NULL\nTHEN DIV0NULL(SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE , SDM_SCND_SALES_DOC_ITEM_NET_VALUE) * SALES_DOC_ITEM_NET_VALUE_USD_SRFR"
+  },
+  {
+    "block_id": "32",
+    "block_group": 32,
+    "block_type": "ELSE",
+    "start_block": 32,
+    "end_block": 32,
+    "parent_block_id": "",
+    "text": "ELSE coalesce(SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE,(Sales_Doc_Item_Net_Value - Sales_Doc_Item_Goods_Issued_Value_Sum) )\nEND as Sales_Doc_Item_BackOrder_Net_Value\n\n,CASE WHEN Sales_Doc_Line_Row_Nbr = 1 and SNAKE_SCND_SD_NBR IS NOT NULL AND (SDM_SCND_SALES_DOC_ITEM_NET_VALUE_USD_SRFR = 0 OR SDM_SCND_SALES_DOC_ITEM_NET_VALUE_USD_SRFR IS NULL)\nTHEN coalesce(SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE_USD_SRFR,(Sales_Doc_Item_Net_Value_USD_SRFR - Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR) )\nWHEN SNAKE_SCND_SD_NBR IS NOT NULL\nTHEN DIV0NULL(SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE_USD_SRFR , SDM_SCND_SALES_DOC_ITEM_NET_VALUE_USD_SRFR) * SALES_DOC_ITEM_NET_VALUE_USD_SRFR"
+  },
+  {
+    "block_id": "33",
+    "block_group": 33,
+    "block_type": "ELSE",
+    "start_block": 33,
+    "end_block": 33,
+    "parent_block_id": "",
+    "text": "ELSE coalesce(SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE_USD_SRFR,(Sales_Doc_Item_Net_Value_USD_SRFR - Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR) )\nEND as Sales_Doc_Item_BackOrder_Net_Value_USD_SRFR\n*/\n\n,case when Backlog_Ind = 'Y' and BackOrder_Ind = 'N' then 'Backlog W/O Backorder'\n      when Backorder_Ind = 'Y' then 'Backorder'\n      when Backlog_Ind = 'Y' then 'Backlog'\n      when Sales_Doc_Item_Open_Ind = 'Y' then 'Open Not Late'"
+  },
+  {
+    "block_id": "34",
+    "block_group": 34,
+    "block_type": "ELSE",
+    "start_block": 34,
+    "end_block": 34,
+    "parent_block_id": "",
+    "text": "else 'Closed' end as Backlog_Group\n\n,case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Item_Ord_Qty_Sales_Unit         else 0 end as Sales_Doc_Item_Ord_Qty_Sales_Unit\n,case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Item_Ord_Qty_Base_Unit          else 0 end as Sales_Doc_Item_Ord_Qty_Base_Unit\n\n,case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Sched_Line_Conf_Qty_Sales_Unit   else 0 end as Sales_Doc_Sched_Line_Conf_Qty_Sales_Unit\n,case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Sched_Line_Conf_Qty_Base_Unit   else 0 end as Sales_Doc_Sched_Line_Conf_Qty_Base_Unit\n\n,case when Sales_Doc_Line_Row_Nbr = 1 and Sales_Doc_Item_Open_Ind = 'Y' then (Sales_Doc_Item_Ord_Qty_Sales_Unit - Sales_Doc_Item_Goods_Issued_Qty_SUOM_Sum)  else 0 end as Sales_Doc_Item_Open_Ord_Qty_Sales_Unit\n,case when Sales_Doc_Line_Row_Nbr = 1 and Sales_Doc_Item_Open_Ind = 'Y' then (Sales_Doc_Item_Ord_Qty_Base_Unit - Sales_Doc_Item_Goods_Issued_Qty_BUOM_Sum)  else 0 end as Sales_Doc_Item_Open_Ord_Qty_Base_Unit\n\n,Sales_Doc_Item_Prec_Doc_Type_Cd\n,Sales_Doc_Shipping_Plant\n,Sales_Doc_Shipping_Plant_Name\n,Pick_Pack_Days\n,Pick_Pack_Hours\n,MRP_Controller\n,MRP_Controller_Email\n,Ship_To_Nbr\n,Ship_To_Name\n,Ship_To_City\n,Ship_To_Pstl_Code\n,Ship_To_Region\n,Ship_To_Country\n,Ship_To_Country_Text\n,Sold_To_Nbr\n,Sold_To_Name\n,Sold_To_Country\n,Sold_To_City\n,Sold_To_Pstl_Code\n,Sold_To_Acct_Grp_Cd\n,Bill_To_Nbr\n,Bill_To_Name\n,Payer_Nbr\n,Payer_Name\n,Pricing_Partner_Nbr\n,Pricing_Partner_Name\n,CSR_Nbr\n,CSR_User_Pin\n,CSR_Name\n,Supv_Name\n,Supv_User_Pin\n,Supv_Prsn_ID\n,Ult_Dest_Ctry_Cd\n--Reject Info\n,Sales_Doc_Item_Reject_Reason_Cd\n,Sales_Doc_Item_Rejection_Status\n,Sales_Doc_Item_Reject_Ind\n,Sales_Doc_Item_Reject_Date\n--Blocked info\n,Sales_Doc_Sched_Line_Delivery_Block\n,Sales_Doc_Billing_Block\n,Sales_Doc_Item_Billing_Block\n,Sales_Doc_Delivery_Block\n,Material_Sales_Blocked_Ind\n--Overall Status\n,Sales_Doc_Overall_Status\n,Sales_Doc_Item_Overall_Status\n,Sales_Doc_Incompletion_Status\n,Sales_Doc_Total_Incompletion_Status\n--Credit Status\n,Sales_Doc_Overall_Credit_Status\n--Incomplete Info\n,Sales_Doc_Item_Incompletion_Status_Delivery\n,Sales_Doc_Item_Incompletion_Status\n--Delivery Status Info\n,Sales_Doc_Item_Delivery_Status\n,Sales_Doc_Item_Overall_Delivery_Status\n--Billing Status info\n,Delivery_Doc_Billing_Status\n,Delivery_Doc_Billing_Block\n,Sales_Doc_Item_Billing_Block_Status\n,Sales_Doc_Item_Billing_Status\n,GTS_Embargo_Status\n,GTS_Screening_Status\n,GTS_Legal_Control_Status\n,GTS_Legal_Control_License\n--POD status\n--,\"SD Item POD Status\" (Didn't find this Column in V_VBAP)\n--,\"DD POD Status\" (Didn't find this Column in V_VBAK)\n--Material Status Info\n,Material_Sales_Status\n,Material_Plant_Status\n,Material_Cross_Plant_Status\n,Global_Sales_Cd\n,Global_Sales_Cd_Name\n,Prod_Group_2_Cd\n,Prod_Group_2_Name\n,Prod_Group_1_Cd\n,Prod_Group_1_Name\n,Bus_Unit_Cd\n,Bus_Unit_Name\n,Profit_Center_Cd\n,Profit_Center_Name\n,Division_Cd --needed for row level security ,\n,Division_Name\n,Company_Cd\n,Company_Cd_Name\n,Company_Cd_Area\n,Sales_Org_Country_Cd       --needed for row level security\n,Sales_Doc_Item_Open_Ind\n,Sales_Doc_Item_Open_Category\n,Payment_Terms\n,Sales_District_Cd\n--,\"Sales District Text\"\n--,Block_Reason_Cd_V4  --old US Version - delete eventually\n,Blocked_Reason\n,case when substr(Blocked_Reason,1,1) = '1'  then '1.Invalid Material'\n      when substr(Blocked_Reason,1,1) = '2'  then '2.Temporary Rejection'\n      when substr(Blocked_Reason,1,1) = '3'  then '3.Delivery Block'\n      when substr(Blocked_Reason,1,1) = '4'  then '4.Incompletions'\n      when substr(Blocked_Reason,1,1) = '5'  then '5.GTS Block'\n      when substr(Blocked_Reason,1,1) = '6'  then '6.Credit Block'\n      when substr(Blocked_Reason,1,1) = '7'  then '7.Billing Block'\n      when substr(Blocked_Reason,1,1) = '8'  then '8.Not Blocked'"
+  },
+  {
+    "block_id": "35",
+    "block_group": 35,
+    "block_type": "ELSE",
+    "start_block": 35,
+    "end_block": 35,
+    "parent_block_id": "",
+    "text": "else '9.NO REASON DETERMINED' end\n as Blocked_Reason_Category\n\n,case when Blocked_Reason not like '%Not Blocked' then 'Blocked'\n      when coalesce(DELIVERY_DOC_ITEM_QTY_SALES_UNIT,0) > 0 and DELIVERY_DOC_ACTUAL_GOODS_ISSUED_DATE is null then 'Delivery Created Not Shipped'\n      when Blocked_Reason   like '%Not Blocked' then 'Not Blocked'"
+  },
+  {
+    "block_id": "36",
+    "block_group": 36,
+    "block_type": "ELSE",
+    "start_block": 36,
+    "end_block": 36,
+    "parent_block_id": "",
+    "text": "else 'Not Determined' end\n as Block_Type\n\n--Max Sched Line Info\n,Current_Planned_Goods_Issued_Date\n--,Current_Expected_Delivery_Date\n,COALESCE(SDM_SCND_CURRENT_EXPECTED_DELIVERY_DATE ,Current_Expected_Delivery_Date) as Current_Expected_Delivery_Date\n,Current_Matl_Avlb_Date\n--Delvery Info\n,Delivery_Doc_Planned_Goods_Issued_Date\n,Delivery_Doc_Actual_Goods_Issued_Date\n,Delivery_Doc_Date\n,Delivery_Doc_Proof_of_Delivery\n,DATEDIFF(DD,Delivery_Doc_Date,CURRENT_DATE) as Days_Aged_from_Delivery_Doc_Date\n\n--Assign the Planned GI Date from the Delivery Doc if still Open else use the Most Recent Planne GI Date from VBEP\n,COALESCE(SDM_SCND_PLANNED_GI_MEASURE_DATE,IFF(coalesce(Delivery_Doc_Item_Qty_Base_Unit,0) > 0 and coalesce(Delivery_Doc_Goods_Issued_Qty_Base_Unit,0) = 0 ,\n    Delivery_Doc_Planned_Goods_Issued_Date, CURRENT_PLANNED_GOODS_ISSUED_DATE))\n as Planned_GI_Measure_Date\n\n,DATEDIFF(DD,CURRENT_DATE,\n  IFF(coalesce(Delivery_Doc_Item_Qty_Base_Unit,0) > 0 and coalesce(Delivery_Doc_Goods_Issued_Qty_Base_Unit,0) = 0 ,\n    Delivery_Doc_Planned_Goods_Issued_Date, CURRENT_PLANNED_GOODS_ISSUED_DATE))\n as Days_Until_Planned_GI\n\n,Delivery_Doc_Planned_Customer_Billing_Date\n,Delivery_Doc_Nbr\n,Delivery_Doc_Item_Nbr\n-- Summing these two works in all cases (batch and no batch)\n,case when Sales_Doc_Line_Del_Row_Nbr = 1 then Delivery_Doc_Item_Qty_Base_Unit else 0 end                as Delivery_Doc_Item_Qty_Base_Unit\n,case when Sales_Doc_Line_Del_Row_Nbr = 1 then Delivery_Doc_Item_Qty_Sales_Unit else 0 end                as Delivery_Doc_Item_Qty_Sales_Unit\n,Delivery_Doc_Item_Net_Weight\n,Delivery_Doc_Item_Gross_Weight\n,Delivery_Doc_Item_Qty_Not_Relevant_BUOM\n,Delivery_Doc_Category\n\n,case when Sales_Doc_Line_Del_Row_Nbr = 1 then Delivery_Doc_Goods_Issued_Net_Value else 0 end          as Delivery_Doc_Goods_Issued_Net_Value\n,case when Sales_Doc_Line_Del_Row_Nbr = 1 then Delivery_Doc_Goods_Issued_Net_Value_USD_SRFR else 0 end as Delivery_Doc_Goods_Issued_Net_Value_USD_SRFR\n,case when Sales_Doc_Line_Del_Row_Nbr = 1 then Delivery_Doc_Goods_Issued_Qty_Base_Unit   else 0 end          as Delivery_Doc_Goods_Issued_Qty_Base_Unit\n,case when Sales_Doc_Line_Del_Row_Nbr = 1 then Delivery_Doc_Goods_Issued_Qty_Sales_Unit   else 0 end          as Delivery_Doc_Goods_Issued_Qty_Sales_Unit\n,Billing_Doc_Date\n,Billing_Doc_Nbr\n,Billing_Doc_Net_Value\n,Billing_Doc_Bill_Type\n,Billing_Doc_Bill_Category\n,Billing_Doc_Currency\n,Billing_Doc_Accounting_Posting_Status\n,Billing_Doc_Item_Nbr\n,Billing_Doc_Item_Net_Value\n,Billing_Doc_Item_Net_Value_USD_SRFR\n,Billing_Doc_Item_Qty_Base_Unit\n,Billing_Doc_Item_Qty_Sales_Unit\n,Billing_Doc_Item_Dest_Country_Cd\n\n-- Manually Priced Report - DARTCO-562\n,Price_Condition_Inactive\n,Billing_Doc_Item_Price_Date  --DCB renamed to Std\n,ZMAN_Auto_Flag\n,ZMAN_Cond_Flag\n,ZMAN_Manual_Amount\n\n-- Segregation of Duties Compliance Report - DARTCO-589\n,Last_Billing_Block_Removed_By\n,Last_Billing_Block_Removed_By_User_name\n,Last_Billing_Block_Removed_Date\n,Last_Billing_Block_Removed_Cd\n,Purch_Order_Nbr\n,Purch_Order_Item_Nbr\n,Purch_Order_Our_Ref\n,Purch_Order_Conf_Date_AB_Max\n,Purch_Order_Conf_Date_LA_Max\n--,Purch_Order_Inb_Dlv_Doc\n--,Purch_Order_Inb_Dlv_Doc_Item\n\n,CASE\n    --when \"DD POD Status\" in ('A', 'B') then 'Pending POD'\n\twhen Billing_Doc_Accounting_Posting_Status in ('C','D','E') then 'Billing Completed'\n    when Delivery_Doc_Billing_Block in ('ZF','ZY') then 'Flash Block on Delivery'\n    when Sales_Doc_Item_Billing_Block='Z1' then 'SD Item Billing Block - Z1 - Check Credit Memo'\n    when Sales_Doc_Item_Billing_Block='Z2' then 'SD Item Billing Block - Z2 - Return Credit Memo'\n    when Sales_Doc_Item_Billing_Block='Z3' then 'SD Item Billing Block - Z3 - Incompl.Pricing Cond.'\n    when Sales_Doc_Item_Billing_Block='Z4' then 'SD Item Billing Block - Z4 - Check Terms or Paymt'\n    when Sales_Doc_Item_Billing_Block='Z5' then 'SD Item Billing Block - Z5 - Customer Block'\n    when Sales_Doc_Item_Billing_Block='Z6' then 'SD Item Billing Block - Z6 - Billing Plan Block'\n    when Sales_Doc_Item_Billing_Block='Z7' then 'SD Item Billing Block - Z7 - 3M Pmt Authorization'\n    when Sales_Doc_Item_Billing_Block='Z8' then 'SD Item Billing Block - Z8 - Approval Required'\n    when Sales_Doc_Item_Billing_Block='Z9' then 'SD Item Billing Block - Z9 - FORS orders block'\n    when Sales_Doc_Item_Billing_Block='ZD' then 'SD Item Billing Block - ZD - Approval Denied'\n    when Sales_Doc_Item_Billing_Block='ZF' then 'SD Item Billing Block - ZF - Flash Partner Block'\n    when Sales_Doc_Item_Billing_Block='ZP' then 'SD Item Billing Block - ZP - POD Completion'\n    when Sales_Doc_Item_Billing_Block='ZW' then 'SD Item Billing Block - ZW - Workflow Blocked'\n    when Sales_Doc_Item_Billing_Block='ZZ' then 'SD Item Billing Block - ZZ - Collective Bill - TW'\n    when Sales_Doc_Billing_Block='Z1'      then 'SD Hdr Billing Block - Z1 - Check Credit Memo'\n    when Sales_Doc_Billing_Block='Z2'      then 'SD Hdr Billing Block - Z2 - Return Credit Memo'\n    when Sales_Doc_Billing_Block='Z3'      then 'SD Hdr Billing Block - Z3 - Incompl.Pricing Cond.'\n    when Sales_Doc_Billing_Block='Z4'      then 'SD Hdr Billing Block - Z4 - Check Terms or Paymt'\n    when Sales_Doc_Billing_Block='Z5'      then 'SD Hdr Billing Block - Z5 - Customer Block'\n    when Sales_Doc_Billing_Block='Z6'      then 'SD Hdr Billing Block - Z6 - Billing Plan Block'\n    when Sales_Doc_Billing_Block='Z7'      then 'SD Hdr Billing Block - Z7 - 3M Pmt Authorization'\n    when Sales_Doc_Billing_Block='Z8'      then 'SD Hdr Billing Block - Z8 - Approval Required'\n    when Sales_Doc_Billing_Block='Z9'      then 'SD Hdr Billing Block - Z9 - FORS orders block'\n    when Sales_Doc_Billing_Block='ZD'      then 'SD Hdr Billing Block - ZD - Approval Denied'\n    when Sales_Doc_Billing_Block='ZF'      then 'SD Hdr Billing Block - ZF - Flash Partner Block'\n    when Sales_Doc_Billing_Block='ZP'      then 'SD Hdr Billing Block - ZP - POD Completion'\n    when Sales_Doc_Billing_Block='ZW'      then 'SD Hdr Billing Block - ZW - Workflow Blocked'\n    when Sales_Doc_Billing_Block='ZZ'      then 'SD Hdr Billing Block - ZZ - Collective Bill - TW'\n    when Delivery_Doc_Actual_Goods_Issued_Date = CURRENT_DATE AND Delivery_Doc_Planned_Customer_Billing_Date = CURRENT_DATE\n                                      Then 'To be billed during the night'\n    when Delivery_Doc_Actual_Goods_Issued_Date = CURRENT_DATE AND Delivery_Doc_Planned_Customer_Billing_Date > CURRENT_DATE\n                                      Then 'Planned on Billing Calendar - Shipped Today'\n    --when (Delivery_Doc_Actual_Goods_Issued_Date <> '00000000' AND (\"SD Item Category\"='ZTAS' AND \"PTO PO Confirmation --Date\" <> '00000000' )) AND Delivery_Doc_Planned_Customer_Billing_Date >= CURRENT_DATE\n                                      --Then 'Planned on Billing Calendar'\n   -- when(\"SD Item Category\"='ZTAS' AND \"PTO PO Confirmation Date\" <> '00000000' ) AND Delivery_Doc_Planned_Customer_Billing_Date< CURRENT_DATE  Then 'Shipped not Billed \u2013 Others - ZTAS Orders'\n\n    --when \"SD Item Category\" in ('ZVBN','ZKOM','ZLAS','ZREX','ZSAS','ZSFS','ZTAD', 'ZTIC','ZTIN','ZTNS','ZVAS','ZVTS')\n        --AND \"PTO PO Confirmation Date\" <> '00000000'\n        --AND Delivery_Doc_Planned_Customer_Billing_Date< CURRENT_DATE\n        --Then 'Shipped not Billed \u2013 Others - PTO DS Orders'\n --**\n    when(Delivery_Doc_Actual_Goods_Issued_Date is not null AND Delivery_Doc_Planned_Customer_Billing_Date < CURRENT_DATE)\n        Then 'Shipped not Billed - Others'"
+  },
+  {
+    "block_id": "37",
+    "block_group": 37,
+    "block_type": "ELSE",
+    "start_block": 37,
+    "end_block": 37,
+    "parent_block_id": "",
+    "text": "ELSE 'To be checked'\n\nEND AS Shipped_Not_Billed_Reason\n\n---=========================================================\n--Compliance Identifiers\n--==========================================================\n,CASE\n ---check interim state scenario - could actually be multiple Actl GI Dates on the ZINT -\n /*WHEN Snake_Scnd_SD_Nbr is not null  --found a match in interim state snake\n\tAND SCND_SD_Delivery_Doc_Actual_Goods_Issued_Date IS NOT NULL\n\tAND Billing_Doc_Nbr IS NULL      --same Billing Doc Nbr will exist as in Normal Scenario ?\n\tAND SCND_SD_Delivery_Doc_Billing_Status in ('A','B')\n\tAND Sales_Doc_Category_Cd ='C'\n\tTHEN 'Shipped Not Billed'*/\n WHEN Delivery_Doc_Actual_Goods_Issued_Date IS NOT NULL\n    AND Billing_Doc_Nbr IS NULL\n    AND Delivery_Doc_Billing_Status IN ('A','B')\n    AND Sales_Doc_Category_Cd ='C'\n    --- not in ( 'ZCF','ZCP','ZRPA','ZRE','ZES','ZCRI','ZVCF')\n    --AND Sales_Doc_Item_Category_Cd IN\n    --( 'ZTAS','ZVBN','ZKOM','ZLAS','ZREX','ZSAS','ZSFS','ZTAD','ZTIC','ZTIN','ZTNS','ZVAS','ZVTS'  )\n    THEN 'Shipped Not Billed'\n--check interim state scenario - could actually be multiple Actl GI Dates on the ZINT -\n-- WHEN scnd_sd_nbr is not null  --found a match in interim state snake\n--    AND ECC_Delivery_Doc_Actual_Goods_Issued_Date IS NOT NULL\n--    AND Billing_Doc_Nbr IS NULL      --same Billing Doc Nbr will exist as in Normal Scenario ?\n--    AND ECC_Delivery_Doc_Billing_Status in ('A','B')\n--    AND Sales_Doc_Category_Cd ='C'\n --   THEN 'Shipped Not Billed'\n WHEN Billing_Doc_Nbr IS NOT NULL\n    AND Billing_Doc_Accounting_Posting_Status not in ('C', 'D', 'E')\n    --AND Sales_Doc_Type_Cd IN ('ZOR','ZINT')\n    --AND Sales_Doc_Type_Cd NOT IN  ( 'ZCF','ZCP','ZRPA','ZRE','ZES','ZCRI','ZVCF') --added by DCB as it seems to make sense\n    THEN 'Billed Not Posted'\n WHEN SUBSTR(TO_VARCHAR(Delivery_Doc_Actual_Goods_Issued_Date),1,7) <> SUBSTR(TO_VARCHAR(Billing_Doc_Date),1,7)\n      AND Sales_Doc_Category_Cd ='C'\n      --AND Sales_Doc_Type_Cd  NOT IN  ( 'ZCF','ZCP','ZRPA','ZRE','ZES','ZCRI','ZVCF'  )\n      AND Billing_Doc_Nbr IS NOT NULL\n      AND Billing_Doc_Accounting_Posting_Status in ('C','D','E')\n      THEN 'Billed in Diff Period than PGI'  -- if Year and Month are different"
+  },
+  {
+    "block_id": "38",
+    "block_group": 38,
+    "block_type": "ELSE",
+    "start_block": 38,
+    "end_block": 38,
+    "parent_block_id": "",
+    "text": "ELSE 'REC015 Compliant' END\n as SOX_REC015_Category\n\n,CASE WHEN Sales_Doc_Category_Cd = 'L'\n    --WHEN Billing_Doc_Bill_Type IN ( 'ZRKC','ZL2','ZINM') prev ECC Code\n      AND Billing_Doc_Accounting_Posting_Status  in ('C','D','E')\n      THEN 'Y' ELSE 'N' END\n      as SOX_REC057_Debit_Memo_Ind\n\n,CASE WHEN Sales_Doc_Category_Cd in ('K','H')\n    --WHEN Sales_Doc_Type_Cd in ('ZCR','ZRE','ZCRI') Previous ECC code\n      AND Sales_Doc_Created_By = Last_Billing_Block_Removed_By\n      --AND Sales_Doc_Net_Value > 5000\n      AND Sales_Doc_Billing_Block =  ''\n      THEN 'Y' ELSE 'N' END\n      as SOX_REC274_Returns_Credits_SOD_Ind\n\n,CASE WHEN Sales_Doc_Category_Cd = 'C'\n      --WHEN Sales_Doc_Type_Cd NOT IN  ('ZCF','ZCP','ZRPA','ZRE','ZES','ZCRI','ZVCF') --prev ECC Code\n      AND ZMAN_Cond_Flag = 'Y'\n      AND Price_Condition_Inactive = ''   --condition is active/inactive\n      --AND ZMAN_Manual_Amount >= 100000  -- this needs to be applied to USD SRFR\n      --AND Sales_Doc_Created_By <> 'RFC_PI1_PR1'\n      THEN 'Y' ELSE 'N' END\n      AS SOX_REC135_Manually_Priced_Ind\n\n,OTIF_Date_Original\n,OTIF_Date_Revised\n,OTIF_Measure_Date\n\n,case when OTIF_Measure_Date <  CURRENT_DATE                       then '1 - OTIF in the Past'\n      when OTIF_Measure_Date <   Planned_GI_Measure_Date  then '2 - Not Yet Late but OTIF Date < Planned GI Date'\n      when OTIF_Measure_Date >=  Planned_GI_Measure_Date  then '3 - Should be On Time - OTIF Date >= Planned GI Date'"
+  },
+  {
+    "block_id": "39",
+    "block_group": 39,
+    "block_type": "ELSE",
+    "start_block": 39,
+    "end_block": 39,
+    "parent_block_id": "",
+    "text": "else 'Not Determined' end\n as OTIF_Early_Warning\n\n,MAD_Date_Original\n,Last_Prod_Avlb_Check_Date\n,Prod_Avail_Ind\n,BackLog_Ind\n,BackOrder_Ind\n,Sales_Doc_Group\n,CSR_HDR_Z002_Text\n,CSR_Line_Z020_Text\n,CSR_Line_ZMAN_Text\n--,TM_HDR_Create_Date\n,Sales_Doc_Ship_Compl_Ind\n,Plan_Strat_Group\n,Plant_Strat_Group_Text\n,Sales_Doc_Cust_PO_Nbr\n,Billing_Doc_Item_Created_By\n,Sales_Rep_Nbr\n,Sales_Rep_Name\n,Sales_Doc_Item_Tgt_Qty_Sales_Unit\n,Sales_Doc_Item_Tgt_Qty_Base_Unit\n,Delivery_Doc_Volume\n,Delivery_Doc_Volume_Unit\n,Delivery_Doc_Item_Net_Value\n,Delivery_Doc_Item_Net_Value_USD_SRFR\n,DATEDIFF(DD,OTIF_Measure_Date,CURRENT_DATE) as Days_Aged_from_OTIF_Date\n,Material_Entered\n,Sales_Doc_Cust_PO_Ord_Type_Text\n,Sales_Doc_Item_CSR_Open_Ind\n,Sales_Doc_Item_CSR_Open_Category\n,Sales_Doc_Item_Net_Price\n,Material_Sales_LCL_Cat_ID\n,Cust_CSR_Acct_Group\n,Cust_CSR_Acct_Name\n,Company_Cd_Super_Region\n,Company_Cd_Region\n,Sales_Doc_Order_Reason_Text\n,Block_Dlv_Invalid_Matno_Ind\n,Block_Dlv_Temp_Reject_A5_Ind\n,Block_Dlv_Temp_Reject_Other_Ind\n,Block_Dlv_80_Obsl_Plant_Ind\n,Block_Dlv_87_Adv_Pay_Hold_Ind\n,Block_Dlv_88_Cutover_Ind\n,Block_Dlv_89_Retrieve_Alert_Ind\n,Block_Dlv_91_Cust_Request_Ind\n,Block_Dlv_92_CSR_Hold_Ind\n,Block_Dlv_93_Price_Ind\n,Block_Dlv_94_Quality_Issue_Ind\n,Block_Dlv_95_EDI_NGG_Ind\n,Block_Dlv_96_Adv_Pay_Rqd_Ind\n,Block_Dlv_97_Nil_Pick_Ind\n,Block_Dlv_99_CSR_Review_Ind\n,Block_Dlv_99_Assoc_with_Delivery_Ind\n,Block_Incompletion_Ind\n,Block_GTS_Ind\n,Block_Credit_Hold_Ind\n,Block_Billing_Ind\n,Block_Dlv_Other_Ind\n,Material_Sales_Delv_Plant\n,Last_Delivery_Block_Removed_By\n,Last_Delivery_Block_Removed_By_User_name\n,CUST_ACCT_GROUP\n,Sales_Doc_Inco_Terms_1\n,Sales_Doc_Inco_Terms_2\n,Consol_Partner\n,Days_Until_OTIF\n,CASE\n        WHEN DATEDIFF(DAY, CURR_DATE, OTIF_Measure_Date) >= 2 THEN 'Before OTIF Date - 2 or More Days'\n        WHEN DATEDIFF(DAY, CURR_DATE, OTIF_Measure_Date) = 1 THEN 'Before OTIF Date - 1 Day'\n        WHEN DATEDIFF(DAY, CURR_DATE, OTIF_Measure_Date) = 0 THEN 'OTIF Date = Today'\n        WHEN DATEDIFF(DAY, CURR_DATE, OTIF_Measure_Date) <= -1 THEN 'Past OTIF Date'"
+  },
+  {
+    "block_id": "40",
+    "block_group": 40,
+    "block_type": "ELSE",
+    "start_block": 40,
+    "end_block": 40,
+    "parent_block_id": "",
+    "text": "ELSE ''\n    END AS OTIF_Early_Late_Category\n, CASE\n        WHEN OTIF_MEASURE_DATE = '0001-01-02' or OTIF_Measure_Date is Null THEN 'Invalid OTIF'\n        WHEN Days_Aged_From_OTIF_Date < 0 then '-999-000'\n        WHEN Days_Aged_From_OTIF_Date BETWEEN 0 AND 13 THEN '000-013'\n        WHEN Days_Aged_From_OTIF_Date BETWEEN 14 AND 27 THEN '014-027'\n        WHEN Days_Aged_From_OTIF_Date BETWEEN 28 AND 41 THEN '028-041'\n        WHEN Days_Aged_From_OTIF_Date BETWEEN 42 AND 55 THEN '042-055'\n        WHEN Days_Aged_From_OTIF_Date BETWEEN 56 AND 69 THEN '056-069'\n        WHEN Days_Aged_From_OTIF_Date BETWEEN 70 AND 83 THEN '070-083'\n        WHEN Days_Aged_From_OTIF_Date BETWEEN 84 AND 97 THEN '084-097'\n        WHEN Days_Aged_From_OTIF_Date BETWEEN 98 AND 111 THEN '098-111'\n        WHEN Days_Aged_From_OTIF_Date BETWEEN 112 AND 125 THEN '112-125'\n        WHEN Days_Aged_From_OTIF_Date BETWEEN 126 AND 140 THEN '126-140'\n        WHEN Days_Aged_From_OTIF_Date > 140 THEN '140+'"
+  },
+  {
+    "block_id": "41",
+    "block_group": 41,
+    "block_type": "ELSE",
+    "start_block": 41,
+    "end_block": 41,
+    "parent_block_id": "",
+    "text": "ELSE 'Unresolvable'\n    END AS Days_Late_Clusters\n/*,CASE\n        WHEN Days_Until_OTIF < 0 then 1\n        WHEN Days_Until_OTIF BETWEEN 0 AND 13 THEN 2\n        WHEN Days_Until_OTIF BETWEEN 14 AND 27 THEN 3\n        WHEN Days_Until_OTIF BETWEEN 28 AND 41 THEN 4\n        WHEN Days_Until_OTIF BETWEEN 42 AND 55 THEN 5\n        WHEN Days_Until_OTIF BETWEEN 56 AND 69 THEN 6\n        WHEN Days_Until_OTIF BETWEEN 70 AND 83 THEN 7\n        WHEN Days_Until_OTIF BETWEEN 84 AND 97 THEN 8\n        WHEN Days_Until_OTIF BETWEEN 98 AND 111 THEN 9\n        WHEN Days_Until_OTIF BETWEEN 112 AND 125 THEN 10\n        WHEN Days_Until_OTIF BETWEEN 126 AND 140 THEN 11\n        WHEN Days_Until_OTIF > 140 THEN 12"
+  },
+  {
+    "block_id": "42",
+    "block_group": 42,
+    "block_type": "ELSE",
+    "start_block": 42,
+    "end_block": 42,
+    "parent_block_id": "",
+    "text": "ELSE 0\n    END AS Days_Late_Clusters_Order*/\n,NULL as Days_Late_Clusters_Order\n,Material_Description_ARKTX\n,Credit_Hold_Removed_Date\n,Sales_Doc_Billing_Block_Text\n,Sales_Doc_Item_Billing_Block_Text\n,Sales_Doc_Delivery_Block_Text\n,Sales_Doc_Sched_Line_Delivery_Block_Text\n,Billing_Doc_Item_Date\n,Sales_Doc_Item_Contract_Sales_Nbr\n,Customer_Material_Nbr\n,Delivery_Doc_Billing_Block_Text\n,Delivery_Doc_Item_Billing_Block_Text\n,Flash_Ind\n\n,Snake_Scnd_SD_Nbr\n,Snake_SD_Item_Nbr\n\n--,Snake_OBD_Nbr        --removed this field - would cause storing data below intended\n--,Snake_OBD_Item_NBr   --removed this field - would cause storing data below intended\n--,Snake_OBD_Last_Ship  --removed this field - would cause storing data below intended\n\n,Sales_Doc_Item_Delivery_Priority\n,COMPANY_CD_COUNTRY_NAME\n--,PRICING_DOC_COND_NBR\n,DIV0NULL((case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Item_Net_Value_USD_SRFR    else 0 end ),(case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Item_Net_Value  else 0 end )) * ZMAN_Manual_Amount as ZMAN_Manual_Amount_USD_SRFR\n,sales_doc_item_net_value_loc_srfr\n,sales_doc_item_loc_curr\n,billing_doc_item_net_value_loc_srfr\n,delivery_doc_item_net_value_loc_srfr\n,Phase_In_Material_Nbr\n,Phase_Out_Reason_Text\n,Billing_Doc_Doc_Category\n--,ZINT_Type\n,Billing_Doc_Price_Cond_Nbr\n,Material_Type_Cd\n,Sales_Doc_Item_Storage_Loc\n,Sales_Doc_Ship_Cond\n,Delivery_Doc_Ship_Cond\n,Interim_Sales_Order_Ind\n,Interim_ZINT_Ind\n,null as Sales_District_Text\n,Sales_Doc_Ship_Cond_Text\n,Delivery_Doc_Ship_Cond_Text\n,Cust_Acct_Group_Text\n,PO_Req_Nbr\n,SCND_SD_Delivery_Doc_Actual_Goods_Issued_Date\n,SCND_SD_Delivery_Doc_Billing_Status\n,SDM_SCND_BLOCKED_REASON\n,SCND_SDM_SALES_DOC_SHIPPING_PLANT\n,SDM_SCND_SALES_DOC_SHIPPING_PLANT_NAME\n,SDM_SCND_SALES_ORG_CD\n,SDM_SCND_SALES_ORG_NAME\n,LAST_UPDATED_TIMESTAMP\n,Sales_Doc_Created_By_Name\n,Delivery_Doc_Goods_Move_Status\n,Sales_Doc_Inco_Terms_1_TEXT\n,Sales_Doc_Inco_Terms_2_TEXT\n,NULL AS COMS_Material_Nbr\n,NULL AS COMS_Doc_Nbr\n,NULL AS COMS_Doc_Item_Nbr\n, Plant_Type\n, Plant_Type_desc\n,plant_area\n,Plant_Country_Name\n, Plant_Region\n, Plant_Super_Area_CD\n,Plant_Super_Area\n,Plant_Super_Region_CD\n, Plant_Super_Region\n,ULTIMATE_SUPPLY_LOCATION_CD\n,ULTIMATE_SUPPLY_LOCATION_DS\n,PRIMARY_SUPPLY_LOCATION_CD\n,PRIMARY_SUPPLY_LOCATION_DS\n,MRP_Controller_Desc\n,Sales_Doc_Cust_Req_Del_Date\n,Customer_Ind\n,ORIG_SDM_SALES_DOC_ITEM_GOODS_ISSUED_QTY_BUOM_SUM\n,ORIG_SDM_SALES_DOC_ITEM_GOODS_ISSUED_QTY_SUOM_SUM\n,SDM_SCND_SALES_DOC_ITEM_GOODS_ISSUED_QTY_BUOM_SUM\n,SDM_SCND_SALES_DOC_ITEM_GOODS_ISSUED_QTY_SUOM_SUM\n,SDM_SCND_SALES_DOC_ITEM_NET_VALUE_USD_SRFR\n,SDM_SCND_SALES_DOC_ITEM_ORD_QTY_SALES_UNIT\n,SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE_USD_SRFR\n,SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE_USD_SRFR\n, Physical_Plant_Cd\n, Physical_Plant_Name\n,Under_Tol_Qty\n,Ship_Compl_Ind\n,Sales_Doc_Cust_PO_Nbr_Rel\n,PO_Req_Item_Nbr\n,Sales_Doc_Item_Sched_Line\n,case when Delivery_Doc_nbr is Null and scnd_sd_delivery_doc_actual_goods_issued_date is not null and backlog_ind <> 'Y' then '01. Shipped Not Billed - Interim State Issue'\n       when sox_rec015_category in ('Shipped Not Billed','Billed Not Posted') and backlog_ind <> 'Y' then '02. Shipped Not Billed or Posted - Normal'\n       when backlog_ind = 'Y' and backorder_ind = 'N' then '03. BackLog W/O Backorder'\n       when backorder_ind = 'Y' and Material_Plant_Status = '50' then '04. BackOrder on Phase Out'\n       when backorder_ind = 'Y' then '05. BackOrder'\n       when coalesce(DELIVERY_DOC_ITEM_QTY_SALES_UNIT,0) > 0 and DELIVERY_DOC_ACTUAL_GOODS_ISSUED_DATE is null then '06. Delivery Created Not Yet Shipped'\n       when left(coalesce(SDM_SCND_BLOCKED_REASON,BLOCKED_REASON,''),1)  in ('1','2','3','4','5','6','7')      then '07. Sales Order Blocked'\n       when Planned_GI_Measure_Date >= CURRENT_DATE() and Sales_Doc_Item_CRDD_Sent_Ind = 'Y' and (Sales_Doc_Frst_Schd_Line_CRDD - CURRENT_DATE()) >= 14 then '08. Plan GI >= Today, Cust Sent CRDD >= 14 days out'\n       when Planned_GI_Measure_Date >= CURRENT_DATE() and Sales_Doc_Item_CRDD_Sent_Ind = 'Y'   then '09. Plan GI >= Today, Cust Sent CRDD < 14 days out'\n       when Planned_GI_Measure_Date >= CURRENT_DATE() then '10. Plan GI >= Today, ATP Set CRDD'\n       when Material_Plant_Status = '50' then '11. Material Plant Status = 50'\n       --when OTIF_MEASURE_Date = CURRENT_DATE() then '11. OTIF Date = Current Date - Not Future Dated'"
+  },
+  {
+    "block_id": "43",
+    "block_group": 43,
+    "block_type": "ELSE",
+    "start_block": 43,
+    "end_block": 43,
+    "parent_block_id": "",
+    "text": "else '12. Other' end\nas Open_Category\n,Sales_Doc_Item_Bill_Rel\n,Sales_Doc_Frst_Schd_Line_CRDD\n,Sales_Doc_Frst_Schd_Line_Conf_Qty\n,Sales_Doc_Item_CRDD_Sent_Ind\n\nFROM ("
+  },
+  {
+    "block_id": "44",
+    "block_group": 44,
+    "block_type": "SELECT",
+    "start_block": 44,
+    "end_block": 44,
+    "parent_block_id": "",
+    "text": "SELECT VBAK.VBELN as Sales_Doc_Nbr\n,VBAP.POSNR       as  Sales_Doc_Item_Nbr\n,VBAK.VKORG       as Sales_Org_Cd\n,TVKOT.VTEXT      as Sales_Org_Name\n,VBAK.ERNAM       as Sales_Doc_Created_By\n,VBAK.AUGRU       as Sales_Doc_Order_Reason_Cd\n,TVAUT.BEZEI      as Sales_Doc_Order_Reason_Text\n,VBAK.NETWR       as Sales_Doc_Net_Value\n,VBAK.NETWR_USD_DOC_DT_FIXED_SRFR  AS \"SD Net Value USD SRFR\"\n--,VBAK.NETWR_USD_SRFR  AS \"SD Net Value USD SRFR\"\n,VBAK.VBTYP       as Sales_Doc_Category_Cd\n,case when VBAP.UNTTO > 0.0 then to_decimal(VBAP.KWMENG * (VBAP.UNTTO / 100),15,2) else 0 end as Under_Tol_Qty\n,ROW_NUMBER() OVER (PARTITION BY vbap.VBELN ORDER BY VBAP.POSNR ASC) as Sales_Doc_Row_Nbr\n,ROW_NUMBER() OVER (PARTITION BY (vbap.VBELN || vbap.POSNR) ORDER BY LIPS.VBELN ASC) as Sales_Doc_Line_Row_Nbr\n,VBKD_SD.BSTKD    as Sales_Doc_Cust_PO_Nbr\n,TRY_TO_DATE(VBKD_SD.BSTDK,'YYYYMMDD')    as Sales_Doc_Cust_PO_Date\n,VBKD_SD.ZTERM    as Payment_Terms\n,VBKD_SD.BSARK    as Sales_Doc_Cust_PO_Ord_Type_Cd\n,VBKD_SDL.BSARK    as Sales_Doc_Item_Cust_PO_Ord_Type_Cd\n,T176T.VTEXT      as Sales_Doc_Cust_PO_Ord_Type_Text\n,VBKD_SD.BZIRK    as Sales_District_Cd\n--,T171T.BZTXT      as \"Sales District Text\"  --won't be in S4\n,VBAK.AUART       as Sales_Doc_Type_Cd\n,TVAKT.BEZEI      as Sales_Doc_Type_Name\n,VBAK.VTWEG       as Sales_Doc_Dist_Chan\n,VBAK.AUTLF       as Sales_Doc_Ship_Compl_Ind\n,CASE WHEN VBAK.ERDAT = '00000000' THEN NULL ELSE DATE(VBAK.ERDAT,'YYYYMMDD') END as Record_Create_Date\n,CASE WHEN VBAK.AUDAT = '00000000' THEN NULL ELSE DATE(VBAK.AUDAT,'YYYYMMDD') END as Sales_Doc_Create_Date\n,VBAP.WERKS       as Sales_Doc_Shipping_Plant\n,T001W.NAME1  as Sales_Doc_Shipping_Plant_Name --T001W.LINE_1_NM  as Sales_Doc_Shipping_Plant_Name (Need to revert once mdm.plant gets blended with S4 data)\n,VBAK.WAERK       as Sales_Doc_Currency\n,TRY_TO_DATE(VBAP.ERDAT,'YYYYMMDD') as Sales_Doc_Item_Create_Date\n,VBAP.ERZET                         as Sales_Doc_Item_Create_Time\n,CASE\n\tWHEN REGEXP_LIKE(VBAP.MATNR, '[a-zA-Z].*') THEN VBAP.MATNR"
+  },
+  {
+    "block_id": "45",
+    "block_group": 45,
+    "block_type": "ELSE",
+    "start_block": 45,
+    "end_block": 45,
+    "parent_block_id": "",
+    "text": "ELSE RIGHT(VBAP.MATNR, 10)\n\tEND AS Material_Nbr\n,VBAP.MATWA       as Material_Entered\n--,PRODH.MATL_DS    as Material_Name  --not populated if PRODHierarchy field is missing\n,MARA.MATL_40_DS  as Material_Name\n,VBAP.EAN11       as EAN_UPC_Nbr\n,CURRENT_DATE     as Curr_Date\n,(WD_END.SHIPPING_DATE_ORDER - WD_START_SDI.SHIPPING_DATE_ORDER) as Sales_Doc_Item_Work_Days_Open\n,case\n    when Sales_Doc_Item_Work_Days_Open > 30 then '5) Greater than 30 Days'\n    when Sales_Doc_Item_Work_Days_Open > 20 then '4) Greater than 20 Days'\n    when Sales_Doc_Item_Work_Days_Open > 10 then '3) Greater than 10 Days'\n    when Sales_Doc_Item_Work_Days_Open >= 4 and Sales_Doc_Item_Work_Days_Open <= 10 then '2) 4-10 Days'\n    when Sales_Doc_Item_Work_Days_Open < 4 then '1) 0-3 Days'"
+  },
+  {
+    "block_id": "46",
+    "block_group": 46,
+    "block_type": "ELSE",
+    "start_block": 46,
+    "end_block": 46,
+    "parent_block_id": "",
+    "text": "else ''\nend as Sales_Doc_Item_Work_Days_Open_Category\n--,VBAP.UMZIZ          as Conv_Factor_Numerator\n--,VBAP.UMZIN          as Conv_Factor_Denominator\n,VBAP.UMVKZ          as Conv_Factor_Numerator\n,VBAP.UMVKN          as Conv_Factor_Denominator\n,VBAP.MEINS          as Base_Unit\n,VBAP.VRKME          as Sales_Unit\n,VBAP.PSTYV          as Sales_Doc_Item_Category_Cd\n,VBAP.VGBEL          as Sales_Doc_Item_Prec_Doc_Nbr\n,VBAP.VGPOS          as Sales_Doc_Item_Prec_Doc_Item\n,VBAP.VSTEL          as Sales_Doc_Item_Ship_Point\n,VBAP.ROUTE          as Sales_Doc_Item_Route\n,VBAP.NETWR          as Sales_Doc_Item_Net_Value\n--,VBAP.NETWR_USD_DOC_DT_FIXED_SRFR as Sales_Doc_Item_Net_Value_USD_SRFR\n,VBAP.NETWR_USD_DOC_DT_DYNAMIC_SRFR as Sales_Doc_Item_Net_Value_USD_SRFR\n,VBAP.NETPR          as Sales_Doc_Item_Net_Price\n,VBAP_SUM_GI.Sales_Doc_Item_Goods_Issued_Value_Sum\n,VBAP_SUM_GI.Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR\n,VBAP_SUM_GI.Sales_Doc_Item_Goods_Issued_Qty_BUOM_Sum\n,VBAP_SUM_GI.Sales_Doc_Item_Goods_Issued_Qty_SUOM_Sum\n,VBAP_SUM_GI.Sales_Doc_Item_Delivery_Count\n,VBAP.KWMENG         as Sales_Doc_Item_Ord_Qty_Sales_Unit\n,VBAP.ZMENG          as Sales_Doc_Item_Tgt_Qty_Sales_Unit\n--,case when VBAP.UMZIN <> 0 then ROUND(KWMENG*(VBAP.UMZIZ / VBAP.UMZIN)) else 0 end as Sales_Doc_Item_Ord_Qty_Base_Unit\n--,case when VBAP.UMZIN <> 0 then ROUND(KWMENG*(VBAP.UMZIZ / VBAP.UMZIN)) else 0 end as Sales_Doc_Item_Tgt_Qty_Base_Unit\n,case when VBAP.UMVKN <> 0 then to_decimal(KWMENG*(VBAP.UMVKZ / VBAP.UMVKN),15,2) else 0 end as Sales_Doc_Item_Ord_Qty_Base_Unit\n,case when VBAP.UMVKN <> 0 then to_decimal(KWMENG*(VBAP.UMVKZ / VBAP.UMVKN),15,2) else 0 end as Sales_Doc_Item_Tgt_Qty_Base_Unit\n,VBAP.VGTYP          as Sales_Doc_Item_Prec_Doc_Type_Cd\n,VBAP.ERNAM          as Sales_Doc_Item_Created_By\n,VBAP.UEBTK          as Sales_Doc_Unlimited_Tolerance\n,VBAP.UEBTO          as Sales_Doc_Item_Over_Delv_Tol_Pct\n,VBAP.UNTTO          as Sales_Doc_Item_Under_Delv_Tol_Pct\n\n--Reject Info\n,VBAP.ABGRU          as Sales_Doc_Item_Reject_Reason_Cd\n,VBAP.ABSTA          as Sales_Doc_Item_Rejection_Status\n\n--,MARC.MRP_CTLR_ID    as MRP_Controller\n--,MARC.PLNG_STRG_GRP_CD as Plan_Strat_Group\n,MARC.MRP_CTLR_ID            as MRP_Controller\n,T024D.USRKEY as MRP_Controller_Email\n,MARC.PLNG_STRG_GRP_CD            as Plan_Strat_Group\n,T461X.TEXT40          as Plant_Strat_Group_Text\n,VBPA_WE.KUNNR         as Ship_To_Nbr\n,KNA1_WE.Name1      as Ship_To_Name\n,KNA1_WE.ORT01       as Ship_To_City\n--,KNA1_WE.     as Ship_To_City2\n,KNA1_WE.PSTLZ         as Ship_To_Pstl_Code\n,KNA1_WE.REGIO    as Ship_To_Region\n,KNA1_WE.LAND1       as Ship_To_Country\n,ST_CNTRY.STD_DESC     as Ship_To_Country_Text\n,VBAK.KUNNR          as Sold_To_Nbr\n,KNA1_SOLD.Name1  as Sold_To_Name\n,KNA1_SOLD.LAND1   as Sold_To_Country\n,KNA1_SOLD.ORT01       as Sold_To_City\n,KNA1_SOLD.PSTLZ         as Sold_To_Pstl_Code\n,KNA1_SOLD.KTOKD AS Sold_To_Acct_Grp_Cd\n,VBPA_RE.KUNNR       as Bill_To_Nbr\n,KNA1_RE.Name1    as Bill_To_Name\n,VBPA_RG.KUNNR       as Payer_Nbr\n,KNA1_RG.Name1    as Payer_Name\n,VBPA_ZP.KUNNR       as Pricing_Partner_Nbr\n,KNA1_ZP.Name1    as Pricing_Partner_Name\n,VBPA_ZC.PERNR       as CSR_Nbr\n,SAP_HR.USRID        as CSR_User_Pin\n,VBPA_YU.LAND1       as Ult_Dest_Ctry_Cd\n,VBPA_ZS.PERNR       as Sales_Rep_Nbr\n,WFrep.PRSN_FRST_NAME || ' ' || WFrep.PRSN_LAST_NAME as Sales_Rep_Name\n,WFcsr.PRSN_FRST_NAME || ' ' || WFcsr.PRSN_LAST_NAME as CSR_Name -- (Replaced FIRST_NAME with PRSN_FRST_NAME and LAST_NAME with PRSN_LAST_NAME)\n,WFSup.PRSN_FRST_NAME || ' ' || WFSup.PRSN_LAST_NAME as Supv_Name -- (Replaced FIRST_NAME with PRSN_FRST_NAME and LAST_NAME with PRSN_LAST_NAME)\n,WFSup.USER_PIN                             as Supv_User_Pin\n,WFSup.PRSN_ID                            as Supv_Prsn_ID -- (Replaced PERSON_ID with PRSN_ID)\n,case when VBAP.ABSTA = 'A' then 'N' --Not Rejected\n      when VBAP.ABSTA = 'C' and VBAP.ABGRU in ('A5','A6','A8') then 'T' --Temporarily Closed\n      when VBAP.ABSTA = 'C' then 'Y'  --Permannently rejected"
+  },
+  {
+    "block_id": "47",
+    "block_group": 47,
+    "block_type": "ELSE",
+    "start_block": 47,
+    "end_block": 47,
+    "parent_block_id": "",
+    "text": "else 'UNKNOWN'\nend as Sales_Doc_Item_Reject_Ind\n,VBPA_YG.KUNNR       as Cust_CSR_Acct_Group\n,KNA1_YG.Name1    as Cust_CSR_Acct_Name\n--Delivery/Billing Blocked info\n,VBAK.FAKSK          as Sales_Doc_Billing_Block\n,VBAP.FAKSP          as Sales_Doc_Item_Billing_Block\n,VBEP_SUM.BMENG_SUM         as Sales_Doc_Sched_Line_Conf_Qty_Sales_Unit\n,VBEP_SUM.Conf_Qty_Sum_BUOM as Sales_Doc_Sched_Line_Conf_Qty_Base_Unit\n,VBEP_MR.LIFSP              as Sales_Doc_Sched_Line_Delivery_Block\n,CASE WHEN (VBEP_MR.WADAT ='00000000' OR VBEP_MR.WADAT= '241025T1') THEN NULL ELSE\n   DATE(VBEP_MR.WADAT,'YYYYMMDD')  END as Current_Planned_Goods_Issued_Date\n,   CASE WHEN (VBEP_MR.EDATU  ='00000000' OR VBEP_MR.EDATU= '241025T1') THEN NULL"
+  },
+  {
+    "block_id": "48",
+    "block_group": 48,
+    "block_type": "ELSE",
+    "start_block": 48,
+    "end_block": 48,
+    "parent_block_id": "",
+    "text": "ELSE DATE(VBEP_MR.EDATU,'YYYYMMDD')   END   as Current_Expected_Delivery_Date\n,CASE WHEN (VBEP_MR.MBDAT  ='00000000' OR VBEP_MR.MBDAT = '241025T1') THEN NULL ELSE\n   DATE(VBEP_MR.MBDAT,'YYYYMMDD')   END  as Current_Matl_Avlb_Date\n,VBAK.LIFSK         as Sales_Doc_Delivery_Block\n--Overall Status\n,VBAK.GBSTK      as Sales_Doc_Overall_Status\n,VBAP.GBSTA      as Sales_Doc_Item_Overall_Status\n,VBAK.UVALL      as Sales_Doc_Incompletion_Status\n,VBAK.UVALS      as Sales_Doc_Total_Incompletion_Status\n--Credit Status\n,VBAK.CMGST      as Sales_Doc_Overall_Credit_Status\n--Incomplete Info\n,VBAP.UVVLK      as Sales_Doc_Item_Incompletion_Status_Delivery\n,VBAP.UVALL      as Sales_Doc_Item_Incompletion_Status\n--Delivery Status Info\n,VBAP.LFSTA      as Sales_Doc_Item_Delivery_Status\n,VBAP.LFGSA      as Sales_Doc_Item_Overall_Delivery_Status\n--Billing Status info\n,VBAP.FSSTA      as Sales_Doc_Item_Billing_Block_Status\n,VBAP.FKSAA      as Sales_Doc_Item_Billing_Status\n,VBAP.EMCST        as GTS_Embargo_Status\n,VBAP.SLCST        as GTS_Screening_Status\n,VBAP.TOTAL_LCCST  as GTS_Legal_Control_Status\n,VBAP.LGLC_LIC_IND as GTS_Legal_Control_License\n--POD status - Not used until Wave 3 according to Pedro\n--,VBAK.PDSTK      as \"DD POD Status\"  (Didn't find this Column in V_VBAK)\n--,VBAP.PDSTA      as \"SD Item POD Status\" (Didn't find this Column in V_VBAP)\n\n--Material Status Info\n,MVKE.DST_CHN_MAT_STS_CD   as Material_Sales_Status\n,MVKE.LCL_CAT_ID           as Material_Sales_LCL_Cat_ID\n,MVKE.DEL_PLNT_CD          as Material_Sales_Delv_Plant\n,case when MVKE.DST_CHN_MAT_STS_CD in ('05','95','99') then 'Y' else 'N' end\n  as Material_Sales_Blocked_Ind\n--,MARC.PLT_SPF_MAT_STS_CD as Material_Plant_Status\n,MARC.PLT_SPF_MAT_STS_CD                as Material_Plant_Status\n,MARA.CRS_PLT_MAT_STS_CD   as Material_Cross_Plant_Status\n,MARA.SAP_MATL_TYPE_CD     as Material_Type_Cd\n,PRODH.PROD_LVL_07_CD          as Global_Sales_Cd\n,PRODH.PROD_LVL_07_DS          as Global_Sales_Cd_Name\n,PRODH.PROD_LVL_06_CD          as Prod_Group_2_Cd\n,PRODH.PROD_LVL_06_DS          as Prod_Group_2_Name\n,PRODH.PROD_LVL_05_CD          as Prod_Group_1_Cd\n,PRODH.PROD_LVL_05_DS          as Prod_Group_1_Name\n,right(PRODH.PROD_LVL_04_CD,4) as Profit_Center_Cd\n,PRODH.PROD_LVL_04_DS          as Profit_Center_Name\n,PRODH.PROD_LVL_03_CD          as Bus_Unit_Cd\n,PRODH.PROD_LVL_03_DS          as Bus_Unit_Name\n,PRODH.PROD_LVL_02_CD          as Division_Cd     --needed for row level security\n,PRODH.PROD_LVL_02_DS          as Division_Name\n,T001.BUKRS              as Company_Cd\n,T001.BUTXT              as Company_Cd_Name\n,T001.LAND1              as Sales_Org_Country_Cd   --needed for row level security\n,CCGEO.BUSU_AREA_NAME    as Company_Cd_Area\n,CCGEO.SPR_RGN_NAME      as Company_Cd_Super_Region\n,CCGEO.RGN_NAME          as Company_CD_Region\n\n--Delivery Info\n,LIPS.VBELN      as Delivery_Doc_Nbr\n,LIPS.POSNR      as Delivery_Doc_Item_Nbr\n,TRY_TO_DATE(LIKP.BLDAT,'YYYYMMDD') as Delivery_Doc_Date\n,LIKP.FAKSK      as Delivery_Doc_Billing_Block\n,LIKP.FKSTK      as Delivery_Doc_Billing_Status\n,TRY_TO_DATE(LIKP.WADAT,'YYYYMMDD')     as Delivery_Doc_Planned_Goods_Issued_Date\n,TRY_TO_DATE(LIKP.WADAT_IST,'YYYYMMDD') as Delivery_Doc_Actual_Goods_Issued_Date\n,TRY_TO_DATE(LIKP.FKDAT,'YYYYMMDD')     as Delivery_Doc_Planned_Customer_Billing_Date\n,TRY_TO_DATE(LIKP.PODAT,'YYYYMMDD')     as Delivery_Doc_Proof_of_Delivery\n-- Summing these two works in all cases (batch and no batch)\n,lips.NETWR_CALC                        as Delivery_Doc_Item_Net_Value\n--,lips.NETWR_CALC_USD_DOC_DT_FIXED_SRFR               as Delivery_Doc_Item_Net_Value_USD_SRFR\n,lips.NETWR_CALC_USD_DOC_DT_DYNAMIC_SRFR               as Delivery_Doc_Item_Net_Value_USD_SRFR\n,(lips.LGMNG + lips.KCMENG)  as Delivery_Doc_Item_Qty_Base_Unit\n,DIV0NULL(((lips.LGMNG + lips.KCMENG) * VBAP.UMZIN) ,VBAP.UMZIZ) as Delivery_Doc_Item_Qty_Sales_Unit\n-- calculate Goods Issued Value and Qty - can remove when Sudharsan adds them\n-- calculated as a proportion of the Sales Line Net Value based on Qty (using Base)\n,lips.GOODS_ISSUED_NET_VALUE          as Delivery_Doc_Goods_Issued_Net_Value\n--,lips.GOODS_ISSUED_NET_VALUE_USD_SRFR as Delivery_Doc_Goods_Issued_Net_Value_USD_SRFR\n--,lips.GOODS_ISSUED_NET_VALUE_USD_DOC_DT_FIXED_SRFR as Delivery_Doc_Goods_Issued_Net_Value_USD_SRFR\n,lips.GOODS_ISSUED_NET_VALUE_USD_DOC_DT_DYNAMIC_SRFR as Delivery_Doc_Goods_Issued_Net_Value_USD_SRFR\n,lips.GOODS_ISSUE_QTY_BUOM            as Delivery_Doc_Goods_Issued_Qty_Base_Unit\n,lips.GOODS_ISSUE_QTY_SUOM            as Delivery_Doc_Goods_Issued_Qty_Sales_Unit\n,lips.NTGEW + lips.KCNTGEW            as Delivery_Doc_Item_Net_Weight\n,lips.BRGEW + lips.KCBRGEW            as Delivery_Doc_Item_Gross_Weight\n,lips.GEWEI                           as Delivery_Doc_Weight_Unit\n,lips.VOLUM + LIPS.KCVOLUM            as Delivery_Doc_Volume\n,lips.VOLEH                           as Delivery_Doc_Volume_Unit\n,CASE WHEN VBAP.WBSTA = '' THEN (lips.LGMNG + lips.KCMENG)"
+  },
+  {
+    "block_id": "49",
+    "block_group": 49,
+    "block_type": "ELSE",
+    "start_block": 49,
+    "end_block": 49,
+    "parent_block_id": "",
+    "text": "ELSE 0 END as Delivery_Doc_Item_Qty_Not_Relevant_BUOM\n,LIKP.VBTYP as Delivery_Doc_Category\n--,CASE WHEN VBAP.WBSTA = 'A' THEN (lips.LGMNG + lips.KCMENG)\n--           ELSE 0 END AS \"DD Item Qty Base Unit Not Processed\"\n--,CASE WHEN VBAP.WBSTA = 'C' THEN (lips.LGMNG + lips.KCMENG)\n--           ELSE 0 END AS \"DD Item Qty Base Unit Processed\"\n\n--,SUM(LIPS.VOLUM) AS \"DD Item Volume\"\n\n--Billing Doc Hdr Info\n,case when BD_OBD.VBELN is not null then BD_OBD.VBELN else BD_SD.VBELN END       as Billing_Doc_Nbr\n,case when BD_OBD.FKDAT is not null then DATE(BD_OBD.FKDAT,'YYYYMMDD') else DATE(BD_SD.FKDAT,'YYYYMMDD') end  as Billing_Doc_Date\n,case when BD_OBD.FKDAT is not null then YEAR(DATE(BD_OBD.FKDAT,'YYYYMMDD')) || MONTH(DATE(BD_OBD.FKDAT,'YYYYMMDD'))"
+  },
+  {
+    "block_id": "50",
+    "block_group": 50,
+    "block_type": "ELSE",
+    "start_block": 50,
+    "end_block": 50,
+    "parent_block_id": "",
+    "text": "else YEAR(DATE(BD_SD.FKDAT,'YYYYMMDD')) || MONTH(DATE(BD_SD.FKDAT,'YYYYMMDD')) end      as \"BD Date Year Month\"\n,case when BD_OBD.FKDAT is not null then YEAR(DATE(BD_OBD.FKDAT,'YYYYMMDD')) || WEEKISO(DATE(BD_OBD.FKDAT,'YYYYMMDD'))"
+  },
+  {
+    "block_id": "51",
+    "block_group": 51,
+    "block_type": "ELSE",
+    "start_block": 51,
+    "end_block": 51,
+    "parent_block_id": "",
+    "text": "else YEAR(DATE(BD_SD.FKDAT,'YYYYMMDD')) || WEEKISO(DATE(BD_SD.FKDAT,'YYYYMMDD')) end    as \"BD Date Year Week\"\n,case when BD_OBD.FKART is not null then BD_OBD.FKART else BD_SD.FKART end    as Billing_Doc_Bill_Type\n,case when BD_OBD.FKTYP is not null then BD_OBD.FKTYP else BD_SD.FKTYP end    as Billing_Doc_Bill_Category\n,case when BD_OBD.VBTYP is not null then BD_OBD.VBTYP else BD_SD.VBTYP end    as Billing_Doc_Doc_Category\n,case when BD_OBD.WAERK is not null then BD_OBD.WAERK else BD_SD.WAERK end    as Billing_Doc_Currency\n,case when BD_OBD.RFBSK is not null then BD_OBD.RFBSK else BD_SD.RFBSK end    as Billing_Doc_Accounting_Posting_Status\n,case when BD_OBD.VBRK_NETWR is not null then BD_OBD.VBRK_NETWR else BD_SD.VBRK_NETWR end    as Billing_Doc_Net_Value\n,case when BD_OBD.KNUMV is not null then BD_OBD.KNUMV else BD_SD.KNUMV end    as Billing_Doc_Price_Cond_Nbr\n\n--Billing Doc Line info\n,case when BD_OBD.POSNR is not null then BD_OBD.POSNR else BD_SD.POSNR end    as Billing_Doc_Item_Nbr\n,case when BD_OBD.ERDAT is not null then BD_OBD.ERDAT else BD_SD.ERDAT end    as Billing_Doc_Item_Date\n,case when BD_OBD.VBRP_NETWR is not null then BD_OBD.VBRP_NETWR else BD_SD.VBRP_NETWR end         as Billing_Doc_Item_Net_Value\n,case when BD_OBD.NETWR_USD_DOC_DT_FIXED_SRFR is not null then BD_OBD.NETWR_USD_DOC_DT_FIXED_SRFR else BD_SD.NETWR_USD_DOC_DT_FIXED_SRFR end as  Billing_Doc_Item_Net_Value_USD_SRFR\n,case when BD_OBD.LOCAL_CURR is not null then BD_OBD.LOCAL_CURR else BD_SD.LOCAL_CURR    end as Billing_Doc_Item_Net_Value_loc_srfr\n\n,case when BD_OBD.LLAND_AUFT is not null then BD_OBD.LLAND_AUFT else BD_SD.LLAND_AUFT    end as Billing_Doc_Item_Dest_Country_Cd\n,case when BD_OBD.FKLMG      is not null then BD_OBD.FKLMG else BD_SD.FKLMG              end as Billing_Doc_Item_Qty_Base_Unit\n,case when BD_OBD.FKIMG      is not null then BD_OBD.FKIMG else BD_SD.FKIMG              end as Billing_Doc_Item_Qty_Sales_Unit\n,case when BD_OBD.ERNAM      is not null then BD_OBD.ERNAM else BD_SD.ERNAM              end as Billing_Doc_Item_Created_By\n,case when BD_OBD.PRSDT      is not null then BD_OBD.PRSDT else BD_SD.PRSDT              end as Billing_Doc_Item_Price_Date\n,To_Decimal(\n   Case When (T630R.PIPATG + T630R.PIPATN) Is Not Null\n           Then (T630R.PIPATG + T630R.PIPATN) / 10000"
+  },
+  {
+    "block_id": "52",
+    "block_group": 52,
+    "block_type": "ELSE",
+    "start_block": 52,
+    "end_block": 52,
+    "parent_block_id": "",
+    "text": "Else (T630R_SP.PIPATG + T630R_SP.PIPATN) / 10000\n    End, 10, 2)      as Pick_Pack_Hours\n,To_Decimal(Case\n        When (T630R.PIPATG + T630R.PIPATN) Is Not Null\n          Then ((T630R.PIPATG + T630R.PIPATN) / 10000) / 24"
+  },
+  {
+    "block_id": "53",
+    "block_group": 53,
+    "block_type": "ELSE",
+    "start_block": 53,
+    "end_block": 53,
+    "parent_block_id": "",
+    "text": "Else ((T630R_SP.PIPATG + T630R_SP.PIPATN) / 10000) / 24\n     End, 10, 3)     as Pick_Pack_Days\n\n/*,case when VBAP.ABSTA  = 'C' and VBAP.ABGRU in ('A5','A6','A8') then 'Y'  -- (LQ was for Large Order Quantity won't be there for Wave 1)\n      when VBAP.GBSTA <> 'C' then 'Y'\n      when VBAK.VBTYP in ('C','H','I') AND VBAP.LFGSA <> 'C' then 'Y' --only check Sales Doc Cats with Delivery Docs\n      --when VBAK.FKSTK <> 'C' then 'Open - DD Billing Status'\n      when coalesce(BD_OBD.RFBSK,BD_SD.RFBSK,'') not in ('C','D','E')  then 'Y'"
+  },
+  {
+    "block_id": "54",
+    "block_group": 54,
+    "block_type": "ELSE",
+    "start_block": 54,
+    "end_block": 54,
+    "parent_block_id": "",
+    "text": "else 'N' end\nas  Sales_Doc_Item_Open_Ind*/\n\n,case when coalesce(BD_OBD.RFBSK,BD_SD.RFBSK,'') in ('C','D','E')   then 'N'\n      when VBAP.ABSTA  = 'C' and VBAP.ABGRU in ('A5','A6','A8')       then 'Y'\n      when VBAP.ABSTA  = 'C' and VBAP.ABGRU <> ''         then 'N'\n      when VBAP.GBSTA <> 'C'                                          then 'Y'\n      when VBAK.VBTYP in ('C','H','I') AND VBAP.LFGSA <> 'C'          then 'Y' --only check SDelivery Relevant\n      --when VBAK.FKSTK <> 'C' then 'Open - DD Billing Status'\n\t  when (vbap_sum_gi.Sales_Doc_Item_Goods_Issued_Qty_SUOM_Sum + Under_Tol_Qty) < vbap.kwmeng then 'Y' --orig SD not completely shipped\n      when VBAP.FKREL = '' or VBAK.AUART in ('ZCF')   or coalesce(LIKP.FKSTK,'X') = '' then 'N'  -- not expecting a billing do\n      -- coalesce(BD_OBD.RFBSK,BD_SD.RFBSK,'')  **change back to this when in SDM\n      when coalesce(BD_OBD.RFBSK,BD_SD.RFBSK,'') not in ('C','D','E') then 'Y'"
+  },
+  {
+    "block_id": "55",
+    "block_group": 55,
+    "block_type": "ELSE",
+    "start_block": 55,
+    "end_block": 55,
+    "parent_block_id": "",
+    "text": "else 'N' end\nas  Sales_Doc_Item_Open_Ind\n\n/*,case when VBAP.ABSTA  = 'C' and VBAP.ABGRU in ('A5','A6','A8')    then 'Open - Temp Reject'\n      when VBAP.GBSTA <> 'C'                                       then 'Open - SD Overall Item Status'\n      when VBAK.VBTYP in ('C','H','I') AND VBAP.LFGSA <> 'C'       then 'Open - SD Overall Item Delivery Status' --only check Sales Doc Cats will have Delivery Docs\n      --when VBAK.FKSTK <> 'C' then 'Open - DD Billing Status'\n      when coalesce(BD_OBD.RFBSK,BD_SD.RFBSK,'') not in ('C','D','E') then 'Open - Account Posting Status'"
+  },
+  {
+    "block_id": "56",
+    "block_group": 56,
+    "block_type": "ELSE",
+    "start_block": 56,
+    "end_block": 56,
+    "parent_block_id": "",
+    "text": "else 'Closed' end\nas  Sales_Doc_Item_Open_Category*/\n\n,case when coalesce(BD_OBD.RFBSK,BD_SD.RFBSK,'') in ('C','D','E')       then 'Closed'\n      when VBAP.ABSTA  = 'C' and VBAP.ABGRU in ('A5','A6','A8') then 'Open - Temp Reject'\n      when VBAP.ABSTA  = 'C' and VBAP.ABGRU <> ''       then 'Closed - Perm Reject'\n      when VBAP.GBSTA <> 'C'                                          then 'Open - SD Overall Item Status'\n      when VBAK.VBTYP in ('C','H','I') AND VBAP.LFGSA <> 'C'          then 'Open - SD Overall Item Delivery Status' --only check Delivery Relevant\n\t  when (vbap_sum_gi.Sales_Doc_Item_Goods_Issued_Qty_SUOM_Sum + Under_Tol_Qty) < vbap.kwmeng then 'Open - Orig SD Not Shipped In Full' --orig SD not completely shipped\n      when VBAP.FKREL = '' or VBAK.AUART in ('ZCF') or coalesce(LIKP.FKSTK,'X') = ''    then 'Closed'  -- not expecting a billing doc\n      when coalesce(BD_OBD.RFBSK,BD_SD.RFBSK,'') not in ('C','D','E') then 'Open - Account Posting Status'"
+  },
+  {
+    "block_id": "57",
+    "block_group": 57,
+    "block_type": "ELSE",
+    "start_block": 57,
+    "end_block": 57,
+    "parent_block_id": "",
+    "text": "else 'Closed' end\nas  Sales_Doc_Item_Open_Category\n\n\n/*,case when VBAP.ABSTA  = 'C' and VBAP.ABGRU in ('A5','A6','A8')    then 'Y'  -- (LQ was for Large Order Quantity won't be there for Wave 1)\n      when VBAP.GBSTA <> 'C' then 'Y'\n      when VBAK.VBTYP in ('C','H','I') AND VBAP.LFGSA <> 'C'       then 'Y'     --only check Sales Doc Cats that will have Delivery Docs"
+  },
+  {
+    "block_id": "58",
+    "block_group": 58,
+    "block_type": "ELSE",
+    "start_block": 58,
+    "end_block": 58,
+    "parent_block_id": "",
+    "text": "else 'N' end\nas  Sales_Doc_Item_CSR_Open_Ind*/\n\n,case when coalesce(BD_OBD.RFBSK,BD_SD.RFBSK,'')  in ('C','D','E')  then 'N'\nwhen VBAP.ABSTA  = 'C' and VBAP.ABGRU in ('A5','A6','A8')               then 'Y'\nwhen VBAP.ABSTA  = 'C' and VBAP.ABGRU <>''               then 'N'\n      when VBAP.GBSTA <> 'C'                                                 then 'Y'\n      when VBAK.VBTYP in ('C','H','I') AND VBAP.LFGSA <> 'C'                 then 'Y'     --only check delivery relevant\n      when (vbap_sum_gi.Sales_Doc_Item_Goods_Issued_Qty_SUOM_Sum + Under_Tol_Qty) < vbap.kwmeng then 'Y' --orig SD not completely shipped"
+  },
+  {
+    "block_id": "59",
+    "block_group": 59,
+    "block_type": "ELSE",
+    "start_block": 59,
+    "end_block": 59,
+    "parent_block_id": "",
+    "text": "else 'N' end\nas  Sales_Doc_Item_CSR_Open_Ind\n\n/*,case when VBAP.ABSTA  = 'C' and VBAP.ABGRU in ('A5','A6','A8')       then 'Open - Temp Reject'\n      when VBAP.GBSTA <> 'C'                                          then 'Open - SD Overall Item Status'\n      when VBAK.VBTYP in ('C','H','I') AND VBAP.LFGSA <> 'C'  then 'Open - SD Overall Item Delivery Status'  --only check Sales Doc Cats that will have Delivery Docs"
+  },
+  {
+    "block_id": "60",
+    "block_group": 60,
+    "block_type": "ELSE",
+    "start_block": 60,
+    "end_block": 60,
+    "parent_block_id": "",
+    "text": "else 'Closed' end\nas Sales_Doc_Item_CSR_Open_Category*/\n\n,case when coalesce(BD_OBD.RFBSK,BD_SD.RFBSK,'') in ('C','D','E')  then 'Closed'\n      when VBAP.ABSTA  = 'C' and VBAP.ABGRU in ('A5','A6','A8')         then 'Open - Temp Reject'\n      when VBAP.ABSTA  = 'C' and VBAP.ABGRU <>''   then 'Closed - Perm Reject'\n      when VBAP.GBSTA <> 'C'                                                 then 'Open - SD Overall Item Status'\n      when VBAK.VBTYP in ('C','H','I') AND VBAP.LFGSA <> 'C'                 then 'Open - SD Overall Item Delivery Status' --only check DDelivery Relevant\n      when (vbap_sum_gi.Sales_Doc_Item_Goods_Issued_Qty_SUOM_Sum + Under_Tol_Qty) < vbap.kwmeng then 'Open - Orig SD Not Shipped In Full'"
+  },
+  {
+    "block_id": "61",
+    "block_group": 61,
+    "block_type": "ELSE",
+    "start_block": 61,
+    "end_block": 61,
+    "parent_block_id": "",
+    "text": "else 'Closed' end\nas Sales_Doc_Item_CSR_Open_Category\n\n--========================================\n--===Open Orders V4 Blocked Reason logic\n--========================================\n/*\n,case when VBAP.MATNR ='INVALIDMATNO' then '01. Invalid MatNo'\n\n -- check with team on how this and or logic should be for Incomplete\n -- check with team on how SD Incompletion Ind should be set\n   -- looks to me like \"SD Incompletion Ind\" = 'Y' equivalent would be... should be (\n   --vbuk.uvall as \"Item\" <> 'C'\n   --vbuk.uvals as \"Incomplete All Items General\"\n   --vbuk.uvfak as \"Incomplete All Items Delivery\"\n   --vbuk.uvfas as \"Incomplete All Items Billing\"\n\nwhen (VBAK.UVALL <> 'C' and VBEP_MR.LIFSP = '' and VBAK.LIFSK= '')\n    or VBAP.UVALL = 'A' or VBAP.UVALL = 'B'                    then '02. Incomplete'\n\n -- check with team on how this and or logic should be Header Billing Block\n --     SD Over all Credit       SD Billing Block     SD Item Bill Block    Sched Line Del Blk  SD Delivery Block\nwhen (VBAK.CMGST <> 'D' and VBAK.FAKSK <> '')\n    or (VBAP.FAKSP <> '' and VBEP_MR.LIFSP = ''   and VBAK.LIFSK = '')   then '04. Header Billing Block'\n--   Sched Line Block                  SD Header Block\nwhen VBEP_MR.LIFSP in ('87','88','91') or VBAK.LIFSK in ('87','88','91') then '05. Customer Block - 87, 88, 91'\nwhen VBEP_MR.LIFSP in ('89','97') or VBAK.LIFSK in ('89','97')           then '06. Material Block - 89, 97'\nwhen VBEP_MR.LIFSP = '93' or VBAK.LIFSK = '93'                           then '07. Pricing Block - 93'\n\nwhen VBEP_MR.LIFSP in ('92','94','95','99','CR')\n       or VBAK.LIFSK in ('92','94','95','99','CR')                    then '08. Header Block - 92, 94, 95, 99, CR'\n\n  --when [Sales Document Overall Credit Status]='B' and [Payment Terms] <> 'ZC66' then '09. Credit Review'\nwhen VBAK.CMGST = 'B' and VBKD_SD.ZTERM <> 'ZC66' then '09. Credit Review'\n\n  --when [Sales Document Overall Credit Status]='B' and [Payment Terms] = 'ZC66'  then '10. CSR Action Credit Card Auth'\nwhen VBAK.CMGST = 'B' and VBKD_SD.ZTERM = 'ZC66'  then '10. CSR Action Credit Card Auth'"
+  },
+  {
+    "block_id": "62",
+    "block_group": 62,
+    "block_type": "ELSE",
+    "start_block": 62,
+    "end_block": 62,
+    "parent_block_id": "",
+    "text": "else 'No Block' end as Block_DlvReason_Cd_V4\n*/\n--=============================================\n--===S4 Blocked and Incomplete PBI logic\n--=============================================\n\n,case\n    when VBAP.MATNR = 'INVALIDMATNO' and right(VBAP.ARKTX,4) = '#M01' then '1.01 - Material Does not Exist'\n    when VBAP.MATNR = 'INVALIDMATNO' and right(VBAP.ARKTX,4) = '#M02' then '1.02 - Material Not Extended'\n    when VBAP.MATNR = 'INVALIDMATNO' and right(VBAP.ARKTX,4) = '#M03' then '1.03 - Material Marked for Block'\n    when VBAP.MATNR = 'INVALIDMATNO' and right(VBAP.ARKTX,4) = '#M04' then '1.04 - Material List and/or Exclusion Error'\n    when VBAP.MATNR = 'INVALIDMATNO' and right(VBAP.ARKTX,4) = 'DOCS' then '1.05 - Material Manual Entry Issue'\n    when VBAP.MATNR = 'INVALIDMATNO'                                  then '1.06 - INVALIDMATNO - unspecified ARKTX'\n    when VBAP.ABGRU IN ('A5')                             then '2.01 - A5 Rejected Line'\n    when VBAP.ABGRU IN ('A6','A8')                        then '2.02 - A6/A8 Rejected Line'\n\n    when VBAK.LIFSK    = '93'                             then '3.01 - Pricing Block 93 (Hdr)'\n    when coalesce(VBEP_MR.LIFSP,'') = '93'                then '3.01 - Pricing Block 93 (Line)'\n\n    when VBAK.LIFSK    = '88'                             then '3.02 - Cutover Block 88 (Hdr)'\n    when coalesce(VBEP_MR.LIFSP,'') = '88'                then '3.02 - Cutover Block 88 (Line)'\n\n    when VBAK.LIFSK    = '89'                             then '3.03 - Retrieve Alert Block 89 (Hdr)'\n    when coalesce(VBEP_MR.LIFSP,'') = '89'                then '3.03 - Retrieve Alert Block 89 (Line)'\n\n    when VBAK.LIFSK    = '91'                             then '3.04 - Cust Request Block 91 (Hdr)'\n    when coalesce(VBEP_MR.LIFSP,'') = '91'                then '3.04 - Cust Request Block 91 (Line)'\n\n    when VBAK.LIFSK    = '92'                             then '3.05 - CSR Hold Block 92 (Hdr)'\n    when coalesce(VBEP_MR.LIFSP,'') = '92'                then '3.05 - CSR Hold Block 92 (Line)'\n\n    when VBAK.LIFSK    = '94'                             then '3.06 - Quality Issue Block 94 (Hdr)'\n    when coalesce(VBEP_MR.LIFSP,'') = '94'                then '3.06 - Quality Issue Block 94 (Line)'\n\n    when VBAK.LIFSK    = '95'                             then '3.07 - EDI/NGG Block 95 (Hdr)'\n    when coalesce(VBEP_MR.LIFSP,'') = '95'                then '3.07 - EDI/NGG Block 95 (Line)'\n\n    when VBAK.LIFSK    = '96'                             then '3.08 - Adv Pay Reqd Block 96 (Hdr)'\n    when coalesce(VBEP_MR.LIFSP,'') = '96'                then '3.08 - Adv Pay Reqd Block 96 (Line)'\n\n    when VBAK.LIFSK    = '97'                             then '3.09 - WH Nil-Pick Block 97 (Hdr)'\n    when coalesce(VBEP_MR.LIFSP,'') = '97'                then '3.09 - WH Nil-Pick Block 97 (Line)'\n\n    when coalesce(VBEP_MR.LIFSP,'') = '99'                then '3.10 - CSR Review Block 99 (Line)'\n\n    when VBAK.UVALL <> 'C'                                then '4.01 - Incompletion (Hdr)'\n    when VBAP.UVALL <> 'C'                                then '4.02 - Incompletion (Line)'\n    when VBAK.UVALS <> 'C'                                then '4.03 - Incompletion Assoc with an Incomplete Line'\n\n    when VBAK.LIFSK    = '99'                             then '3.11 - Associated with a Delivery Block 99 (Hdr)'\n\n    when VBAK.LIFSK    = '80'                             then '3.12 - Obsl Plant Block 80 (Hdr)'\n    when coalesce(VBEP_MR.LIFSP,'') = '80'                then '3.12 - Obsl Plant Block 80 (Line)'\n\n    when VBAK.LIFSK    = '87'                             then '3.13 - Adv Pay Hold Block 87 (Hdr)'\n    when coalesce(VBEP_MR.LIFSP,'') = '87'                then '3.13 - Adv Pay Hold Block 87 (Line)'\n\n    when VBAK.LIFSK    Not In ('','80','87','88','89','91','92','93','94','95','97','97','99') then '3.15 - Delivery Block - Other (Hdr)'\n    when COALESCE(VBEP_MR.LIFSP,'')  Not In ('','80','87','88','89','91','92','93','94','95','97','97','99') then '3.15 - Delivery Block - Other (Line)'\n\n    -- VBAP.LGLC_LIC_IND is not an indication of a block - logic from Mouli Venkataraman\n    when VBAP.EMCST = 'C'                                 then '5.01 - GTS Embargo Block'\n    when VBAP.SLCST = 'C'                                 then '5.02 - GTS Screening Bolck'\n    when VBAP.TOTAL_LCCST in ('C','E')                    then '5.03 - GTS_Legal Control Block'\n\n    when VBAK.CMGST in ('B','C') and VBKD_SD.ZTERM = 'ZC66' then '6.01 - Credit Block - Credit Card Auth'\n    when VBAK.CMGST in ('B','C')                            then '6.02 - Credit Block'\n    when VBAK.FAKSK <> ''                                   then '7.01 - Billing Block (HDR)'  --weird values do show up here like '08'\n    when VBAP.FAKSP <> ''                                   then '7.02 - Billing Block (LINE)'\n\n    --when (VBAK.CMGST <> 'D' and VBAK.FAKSK <> '')\n    --  OR (VBAP.FAKSP <> '' and VBEP_MR.LIFSP = ''   and VBAK.LIFSK = '')   then '12  - Header Billing Block'\n\n    -- Delivery Blks                         and Hdr Incompl        Line Incompl       Hdr Total Incompl\n    /*when VBAK.LIFSK=''   and coalesce(VBEP_MR.LIFSP,'') = '' and VBAK.FAKSK = '' and VBAP.FAKSP = '' -- Blocks - Delivery and Billing\n     and VBAP.EMCST <> 'C' and VBAP.SLCST <> 'C' AND VBAP.TOTAL_LCCST not in ('C','E')   -- Blocks - GTS\n     and VBAK.CMGST not in ('B','C')                                                       -- Blocks - Credit\n     and VBAK.UVALL='C' and VBAP.UVALL='C' and VBAK.UVALS='C'                              -- Incompletes\n     then '8  - Not Blocked'"
+  },
+  {
+    "block_id": "63",
+    "block_group": 63,
+    "block_type": "ELSE",
+    "start_block": 63,
+    "end_block": 63,
+    "parent_block_id": "",
+    "text": "else 'NO REASON DETERMINED'*/"
+  },
+  {
+    "block_id": "64",
+    "block_group": 64,
+    "block_type": "ELSE",
+    "start_block": 64,
+    "end_block": 64,
+    "parent_block_id": "",
+    "text": "else '8  - Not Blocked' end\nas Blocked_Reason\n\n--Blocks we use to have at 3M\n --when VBAP.ZZMINQTY_LOOP ='B' or VBAP.ZZMULQTY_LOOP = 'B' or VBAP-ZZMOQCHECK=''))\n    --                              then '04) Invalid Order Quantity';\n    --when VBAP.ZZINVUOM_LOOP  ='B' then '05) Invalid UoM'\n    --when VBAK.ZZTEXTHDR_LOOP = 'B' or VBAP.ZZTEXTITM_LOOP='B'\n    --                              then '06) EDI PO Sent with Text'\n    --when VBAP.ZZATPPA_LOOP  = 'B' then '07) Product allocation Flag'\n\n --OR(TRIM(VBAP-ZZINVMAT_LOOP)=\"B\";TRIM(VBAP-ZZINVUOM_LOOP)=\"B\";TRIM(VBAP-\n       --ZZTEXTITM_LOOP)=\"B\";TRIM(VBAP-ZZMINQTY_LOOP)=\"B\";\n       --TRIM(VBAP-ZZMULQTY_LOOP)=\"B\";TRIM(VBAP-ZZMOQCHECK)=\"\";TRIM(VBUP-UVALL)<>\"C\"))\n\n--11) IF(AND([VBAK-ZZDUPPO_LOOP]=\"\"B\"\";[VBAK.LIFSK ]='99')   then '11) Duplicate PO'\n--12) IF([VBAK-ZZTOTVALUE_LOOP]=\"\"B\"\";VBAK.LIFSK ]=\"\"99\"\")   then '12) MinValue Header'\n--13) IF([VBAK-ZMULPLANT_LOOP]=\"\"B\"\";VBAK.LIFSK ]=\"\"99\"\")    then '13) Multi-Plant indicator'\n--14) IF([VBAK-ZZTRUCKSZ_LOOP]=\"\"B\"\";VBAK.LIFSK ]=\"\"99\"\")    then '14) Truckload indicator'\n--15) IF([VBAK-ZZWRNRETRVE_LOOP]=\"\"B\"\";[VBAK-LIFSK ]=\"\"99\"\") then '15) Retrieve and Alert'\n\n--==============================================================================\n--create fields for individually monitoring the blocks - best for Stabilization\n--==============================================================================\n,case when VBAP.MATNR ='INVALIDMATNO'                          then 'Y' else 'N' end as Block_Dlv_Invalid_Matno_Ind\n,case when VBAP.ABGRU IN ('A5')                                then 'Y' else 'N' end as Block_Dlv_Temp_Reject_A5_Ind\n,case when VBAP.ABGRU IN ('A6','A8')                           then 'Y' else 'N' end as Block_Dlv_Temp_Reject_Other_Ind\n,case when VBAK.LIFSK = '80' or coalesce(VBEP_MR.LIFSP,'') = '80' then 'Y' else 'N' end as Block_Dlv_80_Obsl_Plant_Ind\n,case when VBAK.LIFSK = '87' or coalesce(VBEP_MR.LIFSP,'') = '87' then 'Y' else 'N' end as Block_Dlv_87_Adv_Pay_Hold_Ind\n,case when VBAK.LIFSK = '88' or coalesce(VBEP_MR.LIFSP,'') = '88' then 'Y' else 'N' end as Block_Dlv_88_Cutover_Ind\n,case when VBAK.LIFSK = '89' or coalesce(VBEP_MR.LIFSP,'') = '89' then 'Y' else 'N' end as Block_Dlv_89_Retrieve_Alert_Ind\n,case when VBAK.LIFSK = '91' or coalesce(VBEP_MR.LIFSP,'') = '91' then 'Y' else 'N' end as Block_Dlv_91_Cust_Request_Ind\n,case when VBAK.LIFSK = '92' or coalesce(VBEP_MR.LIFSP,'') = '92' then 'Y' else 'N' end as Block_Dlv_92_CSR_Hold_Ind\n,case when VBAK.LIFSK = '93' or coalesce(VBEP_MR.LIFSP,'') = '93' then 'Y' else 'N' end as Block_Dlv_93_Price_Ind\n,case when VBAK.LIFSK = '94' or coalesce(VBEP_MR.LIFSP,'') = '94' then 'Y' else 'N' end as Block_Dlv_94_Quality_Issue_Ind\n,case when VBAK.LIFSK = '95' or coalesce(VBEP_MR.LIFSP,'') = '95' then 'Y' else 'N' end as Block_Dlv_95_EDI_NGG_Ind\n,case when VBAK.LIFSK = '96' or coalesce(VBEP_MR.LIFSP,'') = '96' then 'Y' else 'N' end as Block_Dlv_96_Adv_Pay_Rqd_Ind\n,case when VBAK.LIFSK = '97' or coalesce(VBEP_MR.LIFSP,'') = '97' then 'Y' else 'N' end as Block_Dlv_97_Nil_Pick_Ind\n,case when coalesce(VBEP_MR.LIFSP,'') = '99'                   then 'Y' else 'N' end as Block_Dlv_99_CSR_Review_Ind\n,case when VBAK.LIFSK    = '99'                                then 'Y' else 'N' end as Block_Dlv_99_Assoc_with_Delivery_Ind\n\n,case when VBAK.LIFSK                       Not In ('','80','87','88','89','91','92','93','94','95','97','97','99') then 'Y'\n      when coalesce(VBEP_MR.LIFSP,'') Not In ('','80','87','88','89','91','92','93','94','95','97','97','99') then 'Y'"
+  },
+  {
+    "block_id": "65",
+    "block_group": 65,
+    "block_type": "ELSE",
+    "start_block": 65,
+    "end_block": 65,
+    "parent_block_id": "",
+    "text": "else 'N' end as Block_Dlv_Other_Ind\n\n,case when VBAK.UVALL <> 'C' OR VBAP.UVALL <> 'C' OR VBAK.UVALS <> 'C'              then 'Y' else 'N' end as Block_Incompletion_Ind\n,case when VBAP.EMCST = 'C'  OR  VBAP.SLCST = 'C' OR VBAP.TOTAL_LCCST in ('C','E')  then 'Y' else 'N' end as Block_GTS_Ind\n,case when VBAK.CMGST in ('B','C')                                                  then 'Y' else 'N' end as Block_Credit_Hold_Ind\n\n--should this be a list of specific block values between ('Z1','Z2','Z5','Z6','Z8','ZD','ZF','ZW','ZY')\n,case when VBAK.FAKSK <> '' OR VBAP.FAKSP <> '' then 'Y' else 'N' end as Block_Billing_Ind\n\n--XFUNC Open Closed Hard/Complete Version\n/*\n,case\n    -- Closed if SD Item Rejection Status = 'C' and Temp Rejects not in...\n    when VBUP.ABSTA = 'C' and VBAP.ABGRU not in ('A6','A8','CT','LQ') then 'Closed'\n    --Open if Item Overall Status <> 'C'\n    when VBUP.GBSTA <> 'C' then 'Open'\n    --Closed if Item Overall = 'C' and Del Status <> ' ' and Del Qty <> 0\n    --Goods Movement Status = 'C'\n    when VBUP.GBSTA = 'C' and VBUP.LFSTA <> ' ' --and SUM(lips.LGMNG + lips.KCMENG) <> 0\n          then 'Closed'  --and VBUK.WBSTK = 'C'\n    --Closed if Item Overall = 'C' and Del Status <> ' ' and it has Shipped\n    when VBUP.GBSTA = 'C' and VBUP.LFSTA <> ' ' and MIN(LIKP.WADAT_IST) <> '00000000' then 'Closed'"
+  },
+  {
+    "block_id": "66",
+    "block_group": 66,
+    "block_type": "ELSE",
+    "start_block": 66,
+    "end_block": 66,
+    "parent_block_id": "",
+    "text": "else 'Open' end as \"Line Open Closed Ind\"\n*/\n\n,KONV.KINAK as Price_Condition_Inactive\n,CASE WHEN KONV.KSCHL='ZMAN' THEN\t'Y'"
+  },
+  {
+    "block_id": "67",
+    "block_group": 67,
+    "block_type": "ELSE",
+    "start_block": 67,
+    "end_block": 67,
+    "parent_block_id": "",
+    "text": "ELSE 'N'\n    END AS ZMAN_Cond_Flag\n\n,CASE WHEN KONV.KSCHL='ZMAN'\n        and (KONV.KHERK = 'C' OR KONV.KSTEU = 'C' OR KONV.KMPRS = 'X')\n        then 'M'\n\t  WHEN KONV.KSCHL='ZMAN'\n      then 'A' ELSE ''\n    END AS ZMAN_Auto_Flag\n\n,CASE WHEN KONV.KSCHL='ZMAN' THEN KONV.KWERT ELSE 0\n    END\tAS ZMAN_Manual_Amount\n\n,PURCH_ORDER.Purch_Order_Nbr\n,PURCH_ORDER.Purch_Order_Item_Nbr\n,PURCH_ORDER.Purch_Order_Our_Ref\n,PURCH_ORDER.Purch_Order_Conf_Date_AB_Max\n,PURCH_ORDER.Purch_Order_Conf_Date_LA_Max\n--,PURCH_ORDER.Purch_Order_Inb_Dlv_Doc\n--,PURCH_ORDER.Purch_Order_Inb_Dlv_Doc_Item\n\n,coalesce(BILL_BLK_HDR.USERNAME,BILL_BLK_LN.USERNAME) as Last_Billing_Block_Removed_By\n,WF_Last_Billing.PRSN_FRST_NAME || ' ' || WF_Last_Billing.PRSN_LAST_NAME AS Last_Billing_Block_Removed_By_User_name\n,coalesce(BILL_BLK_HDR.Remove_Date,BILL_BLK_LN.Remove_Date) as Last_Billing_Block_Removed_Date\n,coalesce(BILL_BLK_HDR.VALUE_OLD,BILL_BLK_LN.VALUE_OLD)     as Last_Billing_Block_Removed_Cd\n,coalesce(DEL_BLK_HDR.USERNAME,DEL_BLK_LN.USERNAME)   as Last_Delivery_Block_Removed_By\n,WF_Last_Delivery.PRSN_FRST_NAME || ' ' || WF_Last_Delivery.PRSN_LAST_NAME AS  Last_Delivery_Block_Removed_By_User_name\n,CHANGE_LOG_REJ.reject_date                           as Sales_Doc_Item_Reject_Date\n\n,ROW_NUMBER() OVER (PARTITION BY (vbap.VBELN || vbap.POSNR || LIPS.VBELN || LIPS.POSNR) ORDER BY COALESCE(BD_OBD.VBELN,BD_SD.VBELN) ASC) as Sales_Doc_Line_Del_Row_Nbr\n,TRY_TO_DATE(OTIFPROD.OTIF,'YYYYMMDD')              as OTIF_Date_Original\n,TRY_TO_DATE(OTIFPROD.REVOTIF,'YYYYMMDD')           as OTIF_Date_Revised\n/*,OTIFPROD.OTIF_Measure_Date as OTIF_Measure_Date  --created as a date in OTIFPROD View */ -- old logic till 07/29\n,COALESCE(Snake_Orig.SDM_SCND_OTIF_MEASURE_DATE, OTIFPROD.OTIF_Measure_Date) as OTIF_Measure_Date\n\n--,OTIF_Measure_Date                                  as OTIF_Measure_Date\n,TRY_TO_DATE(OTIFPROD.FRSTMAD,'YYYYMMDD')                                            as MAD_Date_Original --TRY_TO_DATE(OTIFPROD.FRSTMAD,'YYYYMMDD')\n,TRY_TO_DATE(OTIFPROD.PADAT,'YYYYMMDD')             as Last_Prod_Avlb_Check_Date\n--,OTIFPROD.PAFLG                                     as Prod_Avail_Ind  --Y = Yes, N = No, X = Not checked yet\n\n--Prod Avail Ind is set from the Scnd SD Nbr if present\n--,case when snake_orig.scnd_sd_nbr is not null then PLRS_ZINT_PA.PROD_AVAIL_Converted else OTIFPROD.PAFLG end as Prod_Avail_Ind -- old logic for Prod_Avail_Ind\n\n,case when snake_orig.scnd_sd_nbr is not null then PLRS_ZINT_PA.Prod_Avail_Converted         --scnd sd nbr exists in PLRS,  look it up in BLBO\n      when coalesce(snake_match.interim_sales_order_ind,'') = 'Y' then 'X'  --if interim sales order set to 'X' as interim ZOR will not know if prod avail is avalable"
+  },
+  {
+    "block_id": "68",
+    "block_group": 68,
+    "block_type": "ELSE",
+    "start_block": 68,
+    "end_block": 68,
+    "parent_block_id": "",
+    "text": "else OTIFPROD.PAFLG  --not an interim sales Order\nend as Prod_Avail_Ind\n\n\n--         Traditional Sales Docs   Deliery is still open           OTIF Date is in the past\n--,case when VBAK.VBTYP = 'C' and coalesce(VBAP.LFGSA,'') <> 'C' and CURRENT_DATE() > OTIFPROD.OTIF_Measure_Date\n-- then 'Y'  else 'N' end\n--as Backlog_Ind\n--**above code works in _Q\n--**below code works in _U\n/*,case when VBAK.VBTYP = 'C' and coalesce(VBAP.LFGSA,'') <> 'C' and CURRENT_DATE() > OTIFPROD.OTIF_Measure_Date\n then 'Y'  else 'N' end\nas Backlog_Ind*/ --Old Logic for Backlog Ind\n\n--New Logic for Backlog Ind\n,case when vbak.vbtyp in ( 'C','I')\n  and coalesce(BD_OBD.RFBSK,BD_SD.RFBSK,'') not in ('C','D','E') -- posted lines will never be backlogged -- Dave\n  and VBAP.ABGRU in ('','A5','A6','A8')            --not rejected\n  and VBAP.MATNR <> 'INVALIDMATNO'      --no OTIF date can be calculated so should never be a backlog, added 07-31-2025\n  and CURRENT_DATE() > COALESCE(Snake_Orig.SDM_SCND_OTIF_MEASURE_DATE, OTIFPROD.OTIF_Measure_Date)\n  and (\n           (snake_orig.scnd_sd_nbr is not null and coalesce(snake_orig.SDM_SCND_BACKLOG_IND,'') = 'Y' )  --interim sales order use backlog ind from Scnd SD (ZINT)\n        or (snake_orig.scnd_sd_nbr is null and (vbap_sum_gi.sales_doc_item_goods_issued_qty_suom_sum + Under_Tol_Qty) < vbap.kwmeng)  --Ship Qty + Tol Qty < Ord Qty\n      )\n  then 'Y' else 'N' end\nas Backlog_Ind\n\n\n--         Traditional Sales Docs         Deliery is still open           OTIF Date is in the past             No Inventory\n--,case when VBAK.VBTYP = 'C' and coalesce(VBAP.LFGSA,'') <> 'C' and CURRENT_DATE() > OTIFPROD.OTIF_Measure_Date\n--   and case when snake.scnd_sd_nbr is not null then PLRS_ZINT_PA.PROD_AVAIL_Converted else OTIFPROD.PAFLG end = 'N'\n--   then 'Y' else 'N' end\n--as BackOrder_Ind\n--**above code works in _Q\n--**below code works in _U\n/*,case when VBAK.VBTYP = 'C' and coalesce(VBAP.LFGSA,'') <> 'C' and CURRENT_DATE() > OTIFPROD.OTIF_Measure_Date\n   and case when snake_orig.scnd_sd_nbr is not null then PLRS_ZINT_PA.PROD_AVAIL_Converted else OTIFPROD.PAFLG end = 'N'\n   then 'Y' else 'N' end\nas BackOrder_Ind*/ --old Logic for Backorder Ind\n\n--New Logic for Backorder Ind\n,case\nwhen snake_match.Interim_Sales_Order_Ind = 'Y' and snake_orig.Scnd_SD_nbr is null Then 'N'  --if interim always set to 'N' as Backorder is Unknown while only Virtual Plant is known\n--when (snake_orig.Scnd_SD_nbr IS not NULL and coalesce(PLRS_ZINT_PA.backorder_indicator,'') <> 'Y' -- AND PLRS_ZINT_PA.PROD_AVAIL_CONVERTED = 'N')\n--then 'N'\nwhen vbak.vbtyp in ( 'C','I')\n  and coalesce(BD_OBD.RFBSK,BD_SD.RFBSK,'') not in ('C','D','E') -- posted lines will never be backlogged -- Dave\n  and VBAP.ABGRU in ('','A5','A6','A8')\n  and CURRENT_DATE() > coalesce(Snake_Orig.SDM_SCND_OTIF_MEASURE_DATE, OTIFPROD.OTIF_Measure_Date)\n  and (\n           (coalesce(snake_orig.SDM_SCND_BACKORDER_IND,'') = 'Y' )   --interim sales order use backorder ind from Scnd SD (ZINT)\n        or (snake_orig.Scnd_SD_nbr is null and (vbap_sum_gi.sales_doc_item_goods_issued_qty_suom_sum + Under_Tol_Qty) < vbap.kwmeng and OTIFPROD.PAFLG = 'N') --if ZINT or normal ZOR use what's in OTIFPROD if Qty not all shipped\n      )\n\n  then 'Y' else 'N' end\nas BackOrder_Ind\n\n\n,CASE WHEN VBAK.AUART = 'ZINT' THEN 'Inter-Company'\n      WHEN VBAK.VKORG in ('8003','8908')    -- Export Markets\n          OR (VBAK.VKORG = '8002' and VBAK.KUNNR = '0020003539') THEN 'Export'"
+  },
+  {
+    "block_id": "69",
+    "block_group": 69,
+    "block_type": "ELSE",
+    "start_block": 69,
+    "end_block": 69,
+    "parent_block_id": "",
+    "text": "ELSE 'Domestic' end\n AS Sales_Doc_Group\n\n,CSRHDRTXT.ZTTEXT     as CSR_HDR_Z002_Text\n,CSRLINETXT.ZTTEXT    as CSR_Line_Z020_Text\n,CSRZMAN.ZTTEXT       as CSR_Line_ZMAN_Text\n--,TM_HDR.BASE_BTD_DATE as TM_HDR_CREATE_DATE\n,KNVV.KDGRP as CUST_ACCT_GROUP\n,VBKD_SD.INCO1 as Sales_Doc_Inco_Terms_1\n,VBKD_SD.INCO2 as Sales_Doc_Inco_Terms_2\n,VBPA_ZT.LIFNR as Consol_Partner\n,-99 as Days_Until_OTIF\n--,DATEDIFF(DAY, OTIFPROD.OTIF_Measure_Date, CURRENT_DATE) AS Days_Until_OTIF\n--,DATEDIFF(DAY, OTIF_Measure_Date, CURRENT_DATE) AS Days_Until_OTIF\n,VBAP.ARKTX as Material_Description_ARKTX\n,CRED_HOLD.Remove_Date     as Credit_Hold_Removed_Date\n,TVFST_HDR.VTEXT    as Sales_Doc_Billing_Block_Text\n,TVFST_ITEM.VTEXT   as Sales_Doc_Item_Billing_Block_Text\n,TVLST.VTEXT        as Sales_Doc_Delivery_Block_Text\n,TVLST_SITEM.VTEXT  as Sales_Doc_Sched_Line_Delivery_Block_Text\n,TVFST_DHDR.VTEXT   as Delivery_Doc_Billing_Block_Text\n,TVFST_DITEM.VTEXT  as Delivery_Doc_Item_Billing_Block_Text\n\n,VBAP.KNUMA_AG      as Sales_Doc_Item_Contract_Sales_Nbr\n,VBAP.KDMAT         as Customer_Material_Nbr\n\n\n,LIKP.ZZICO_FLASH   as Flash_Ind\n--,snake_orig.SCND_SD_NBR AS SCND_SD_NBR\n,snake_orig.SCND_SD_Delivery_Doc_Actual_Goods_Issued_Date\n,snake_orig.SCND_SD_Delivery_Doc_Billing_Status\n--,ECC_ZINT_LIKP.WADAT_IST AS ECC_Delivery_Doc_Actual_Goods_Issued_Date\n--,ECC_ZINT_LIKP.LIFSK AS ECC_Delivery_Doc_Billing_Status\n\n,snake_orig.scnd_sd_nbr      as Snake_Scnd_SD_Nbr\n,snake_orig.scnd_sd_item_nbr as Snake_SD_Item_Nbr\n,snake_match.Interim_Sales_Order_Ind\n\n,snake_scnd.Interim_ZINT_Ind\n\n--,snake.obd_nbr as Snake_OBD_Nbr\n--,snake.obd_item_nbr as Snake_OBD_Item_NBr\n--,snake.obd_last_ship as Snake_OBD_Last_Ship\n,VBAP.LPRIO as Sales_Doc_Item_Delivery_Priority\n,CCGEO.CTRY_NAME         as COMPANY_CD_COUNTRY_NAME\n,KONV.KNUMV AS PRICING_DOC_COND_NBR\n,VBAP.NETWR_LOC_CURR_SRFR as sales_doc_item_net_value_loc_srfr\n,VBAP.LOCAL_CURR as sales_doc_item_loc_curr\n\n,LIPS.NETWR_LOC_CURR_SRFR as delivery_doc_item_net_value_loc_srfr\n,pipo.rptg_ref_matl_no as Phase_In_Material_Nbr\n,PIPO.RSN_TX as Phase_Out_Reason_Text\n--,case when  VBAK.AUART <>  'ZINT' then 'N/A'\n--      when  ZINT_SOLD_TO_NORMAL.Sold_To_Nbr is not null then 'Normal'   --match found so it's a normally transacting ZINT\n--      else 'Interim' end as ZINT_Type\n,VBAP.LGORT as Sales_Doc_Item_Storage_Loc\n,VBAK.VSBED as Sales_Doc_Ship_Cond\n,LIKP.VSBED as Delivery_Doc_Ship_Cond\n,TVSBT_SD.VTEXT as Sales_Doc_Ship_Cond_Text\n,TVSBT_DD.VTEXT as Delivery_Doc_Ship_Cond_Text\n,T151T.ktext as Cust_Acct_Group_Text\n,VBEP_MR.BANFN as PO_Req_Nbr\n,snake_orig.SDM_SCND_BLOCKED_REASON\n,snake_orig.SCND_SDM_SALES_DOC_SHIPPING_PLANT\n,snake_orig.SDM_SCND_SALES_DOC_SHIPPING_PLANT_NAME\n,snake_orig.SDM_SCND_SALES_ORG_CD\n,snake_orig.SDM_SCND_SALES_ORG_NAME\n,CURRENT_TIMESTAMP AS LAST_UPDATED_TIMESTAMP\n,WF_CREATED_BY.PRSN_FRST_NAME || ' ' || WF_CREATED_BY.PRSN_LAST_NAME AS Sales_Doc_Created_By_Name\n,LIKP.WBSTK      as Delivery_Doc_Goods_Move_Status\n,TINCT_INCO1.BEZEI AS Sales_Doc_Inco_Terms_1_TEXT\n,CASE WHEN TINCT_INCO2.INCO1 IS NOT NULL THEN TINCT_INCO2.BEZEI ELSE  VBKD_SD.INCO2 END AS Sales_Doc_Inco_Terms_2_TEXT\n,MARC.PLNT_TYPE_CD as Plant_Type\n,MARC.PLNT_TYPE_DS as Plant_Type_desc\n,geo.BUSU_AREA_NAME AS plant_area\n,geo.CTRY_NAME as Plant_Country_Name\n,geo.RGN_NAME as Plant_Region\n,geo.SPR_AREA_ABBR as Plant_Super_Area_CD\n,geo.SPR_AREA_NAME as Plant_Super_Area\n,geo.SPR_RGN_ABBR as Plant_Super_Region_CD\n,geo.SPR_RGN_NAME as  Plant_Super_Region\n,PRIM_ULT_SPLY_LOC.ULTIMATE_SUPPLY_LOCATION_CD\n,PRIM_ULT_SPLY_LOC.ULTIMATE_SUPPLY_LOCATION_DS\n,PRIM_ULT_SPLY_LOC.PRIMARY_SUPPLY_LOCATION_CD\n,PRIM_ULT_SPLY_LOC.PRIMARY_SUPPLY_LOCATION_DS\n,T024D.DSNAM AS MRP_Controller_Desc\n,TRY_TO_DATE(VBAK.VDATU,'YYYYMMDD') as Sales_Doc_Cust_Req_Del_Date\n,case when VBAK.VTWEG ='00' OR to_char(snake_scnd.Interim_ZINT_Ind) = 'Y' then 'Y' else 'N' end as Customer_Ind\n,snake_orig.SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE as SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE\n,snake_orig.SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE_USD_SRFR as SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE_USD_SRFR\n,snake_orig.SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE as SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE\n,snake_orig.SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE_USD_SRFR as SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE_USD_SRFR\n,snake_orig.ORIG_SDM_SALES_DOC_ITEM_GOODS_ISSUED_QTY_BUOM_SUM\n,snake_orig.ORIG_SDM_SALES_DOC_ITEM_GOODS_ISSUED_QTY_SUOM_SUM\n,snake_orig.SDM_SCND_SALES_DOC_ITEM_GOODS_ISSUED_QTY_BUOM_SUM\n,snake_orig.SDM_SCND_SALES_DOC_ITEM_GOODS_ISSUED_QTY_SUOM_SUM\n,snake_orig.SDM_SCND_SALES_DOC_ITEM_NET_VALUE_USD_SRFR\n,snake_orig.SDM_SCND_SALES_DOC_ITEM_ORD_QTY_SALES_UNIT\n,snake_orig.SDM_SCND_SALES_DOC_ITEM_NET_VALUE\n,coalesce(snake_orig.SCND_SDM_SALES_DOC_SHIPPING_PLANT,VBAP.WERKS) as Physical_Plant_Cd\n,coalesce(snake_orig.SDM_SCND_SALES_DOC_SHIPPING_PLANT_NAME,T001W.NAME1) as Physical_Plant_Name\n\n,case when snake_orig.scnd_sd_nbr  is null and VBAP_SUM_GI.Sales_Doc_Item_Goods_Issued_Qty_SUOM_Sum + Under_Tol_Qty >= vbap.kwmeng then 'Y' --use data from ZOR\n      when snake_orig.scnd_sd_nbr  is not null and snake_orig.SDM_SCND_SALES_DOC_ITEM_GOODS_ISSUED_QTY_SUOM_SUM + Under_Tol_Qty >= snake_orig.SDM_SCND_SALES_DOC_ITEM_ORD_QTY_SALES_UNIT then 'Y'"
+  },
+  {
+    "block_id": "70",
+    "block_group": 70,
+    "block_type": "ELSE",
+    "start_block": 70,
+    "end_block": 70,
+    "parent_block_id": "",
+    "text": "else 'N' end\n  as Ship_Compl_Ind\n,VBKD_SDL.BSTKD_E as Sales_Doc_Cust_PO_Nbr_Rel\n,VBEP_MR.BNFPO as PO_Req_Item_Nbr\n,VBEP_MR.ETENR as Sales_Doc_Item_Sched_Line\n,VBAP.FKREL as Sales_Doc_Item_Bill_Rel\n,snake_orig.SDM_SCND_PLANNED_GI_MEASURE_DATE\n,TRY_TO_DATE(vbep_frst.EDATU,'YYYYMMDD') as Sales_Doc_Frst_Schd_Line_CRDD\n,vbep_frst.BMENG as Sales_Doc_Frst_Schd_Line_Conf_Qty\n,case when (try_to_date(vbep_frst.edatu,'YYYYMMDD')) > (sales_doc_item_create_date + 1) then 'Y' else 'N' end as Sales_Doc_Item_CRDD_Sent_Ind\n,SNAKE_ORIG.SDM_SCND_CURRENT_EXPECTED_DELIVERY_DATE\n--Sales Doc Header\nFROM PUBLISH.CORE_CO_OM_CDS.V_VBAK VBAK\n--Sales Doc Line\nINNER JOIN PUBLISH.CORE_CO_OM_CDS.V_VBAP VBAP\nON VBAK.VBELN = VBAP.VBELN\nAND VBAK.MANDT = VBAP.MANDT\n\n--VBKD SD Header Join\nLEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_VBKD VBKD_SD\nON  VBAK.VBELN    = VBKD_SD.VBELN\nAND VBAK.MANDT    = VBKD_SD.MANDT\nAND VBKD_SD.POSNR = '000000'\n\nLEFT JOIN PUBLISH.CORE_CO_OM_MAIN.V_TINCT  TINCT_INCO1\nON VBKD_SD.INCO1 = TINCT_INCO1.INCO1\nAND TINCT_INCO1.SPRAS='EN'\n\nLEFT JOIN PUBLISH.CORE_CO_OM_MAIN.V_TINCT  TINCT_INCO2\nON VBKD_SD.INCO2 = TINCT_INCO2.INCO1\nAND TINCT_INCO2.SPRAS='EN'\n\n--Sales Org Master to get Country\n--LEFT JOIN PUBLISH.CORE_MDM_CDS.V_TVKO TVKO\nLEFT JOIN PUBLISH.MDM_S4HANA_BASE.V_TVKO TVKO\nON TVKO.VKORG = VBAK.VKORG\nAND TVKO.MANDT = VBAK.MANDT\n\n--select * from PUBLISH_D.MDM.SALES_ORG   --blended\n--select * from PUBLISH_D.PUBLISH.MDM_S4HANA_BASE.V_TVKO  -raw layer - tell chris if something is missing\n\n--Sales Org Master Text to get SO Text\nLEFT JOIN PUBLISH.MDM_S4HANA_BASE.V_TVKOT TVKOT\nON  TVKOT.MANDT = VBAK.MANDT\nAND TVKOT.VKORG = VBAK.VKORG\nAND TVKOT.SPRAS = 'EN'\n\n--Sales_Doc_Ship_Cond_Text\nLEFT  JOIN PUBLISH.CORE_MDM_CDS.V_TVSBT TVSBT_SD\nON VBAK.VSBED = TVSBT_SD.VSBED\nAND TVSBT_SD.SPRAS = 'EN'\n\n--Company Code Master\nLEFT JOIN PUBLISH.MDM_S4HANA_BASE.V_T001 T001\nON  TVKO.MANDT = T001.MANDT\nAND TVKO.BUKRS = T001.BUKRS\n\n--Join to Finance Geography Hierachy to get Comp Code Area\nLEFT JOIN PUBLISH.FIN_DIM_PUBLIC.GEOGRAPHY_HIER CCGEO\nON TVKO.BUKRS = CCGEO.SAP_CO_CODE\nAND CCGEO.SAP_CO_CODE <> '~'  --many entries with '~' in the\nAND CCGEO.SOLV_LGL_ENTY_IND = 'Y'\n\n-- Header Status - Sales Document --this table goes away in S/4 - use VBAK instead\n/*LEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_VBUK VBAK\nON VBAK.VBELN = VBAK.VBELN */\n\n\n\n--VBKD SD Line Join\nLEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_VBKD VBKD_SDL\nON  VBAP.MANDT    = VBKD_SDL.MANDT\nAND VBAP.VBELN    = VBKD_SDL.VBELN\nAND VBAP.POSNR    = VBKD_SDL.POSNR\n\n--Product Hierarcy\nLEFT JOIN PUBLISH.MDM.MATERIAL_PROD_HRCY PRODH\nON PRODH.MATL_NO = RIGHT(VBAP.MATNR,10)\n--and PRODH.SRCE_ID ='PUBLISH.MDM_S4HANA_BASE'\n\n-- Item Status - Sales Doc Line -- this table goes away in S/4 - use VBAP instead\n/*LEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_VBUP VBAP\nON  VBAP.VBELN = VBAP.VBELN\nAND VBAP.POSNR = VBAP.POSNR */\n\n--Sales Doc Sched Line -- must bring VBEP a Sales Doc Line level with  join to LIPS\n--LIPS Rows and Qty would explode up. Values on the Max Sched Line with a Conf Qty should suffice\n-- versus having an extractor that lines up the Sched Line and Deliver Line.\nLEFT OUTER JOIN ( SELECT V.MANDT\n    ,V.VBELN\n    ,V.POSNR\n    ,V.ETENR -- sched line\n    ,V.MBDAT -- Mat avlb date\n    ,V.WADAT -- planned gi date\n    ,V.EDATU -- cust requested del date\n    ,V.LIFSP -- delivery block\n\t,V.BANFN\n\t,V.BNFPO -- Purchase Req Item\n    FROM PUBLISH.CORE_CO_COMMON_CDS.V_VBEP V\n    --WHERE V.BMENG > 0\n    QUALIFY ROW_NUMBER() OVER(PARTITION BY V.VBELN, V.POSNR ORDER BY V.ETENR DESC) = 1 ) VBEP_MR  --created in WITH at top\nON  VBEP_MR.MANDT = VBAP.MANDT\nAND VBEP_MR.VBELN = VBAP.VBELN\nAND VBEP_MR.POSNR = VBAP.POSNR\n\nLEFT OUTER JOIN VBEP_SUM  --created in WITH at top\nON  VBEP_SUM.MANDT = VBAP.MANDT\nAND VBEP_SUM.VBELN  = VBAP.VBELN\nAND VBEP_SUM.POSNR  = VBAP.POSNR\n\n--Delivery Doc Item\nLEFT JOIN PUBLISH.CORE_CO_OM_CDS.V_LIPS LIPS\nON  VBAP.MANDT = LIPS.MANDT\nAND VBAP.VBELN = LIPS.VGBEL\nAND VBAP.POSNR = LIPS.VGPOS\nand VBAK.VBTYP = LIPS.VGTYP\n--AND LIPS.VGTYP = 'C' --limit to Del Docs created by Sales Doc\nAND LIPS.UECHA = '000000' --Only Master Row\nand (LIPS.KCMENG + lips.LFIMG) >0\n\n--Item Status - Delivery Line -- this table goes away in S/4 use LIPS instead\n/*LEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_VBUP VBAP\nON  VBAP.VBELN = LIPS.VBELN\nAND VBAP.POSNR = LIPS.POSNR */\n\n--Delivery Doc Header\nLEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_LIKP LIKP\nON LIKP.VBELN = LIPS.VBELN\nAND LIKP.MANDT = LIPS.MANDT\n\n-- Delivery_Doc_Ship_Cond_Text\nLEFT  JOIN PUBLISH.CORE_MDM_CDS.V_TVSBT TVSBT_DD\nON LIKP.VSBED = TVSBT_DD.VSBED\nAND TVSBT_DD.SPRAS = 'EN'\n\n\n--BILLING_DOCS CTE is created above joining VBRK and VBRP limiting to Customer Invoice Billing Docs\nLEFT JOIN BILLING_DOCS BD_OBD  ---joining from LIPS when preceeding doc is an OBD (OUT BOUND DELIVERY)\nON  BD_OBD.MANDT = LIPS.MANDT\nAND BD_OBD.VGBEL = LIPS.VBELN\nAND BD_OBD.VGPOS = LIPS.POSNR\n\nLEFT JOIN BILLING_DOCS BD_SD  --joining from VBAP when preceeding doc is a SO\nON  BD_SD.MANDT = VBAP.MANDT\nAND BD_SD.VGBEL = VBAP.VBELN\nAND BD_SD.VGPOS = VBAP.POSNR\n\n/*\n\n-- Billing Document Item Table\nLEFT JOIN PUBLISH.CORE_CO_OM_CDS.V_VBRP VBRP\nON  VBRP.MANDT = LIPS.MANDT\nAND VBRP.VGBEL = LIPS.VBELN\nAND VBRP.VGPOS = LIPS.POSNR\n\n\n--Billing Document Header\nLEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_VBRK VBRK\nON  VBRK.MANDT = VBRP.MANDT\nAND VBRK.VBELN = VBRP.VBELN\nAND VBRK.VBTYP in ('M','O','P')  --only customer invoices, no flash docs\n\n--Billing Doc Line directly from VBAP (for Debit/Credit Memos)\nLEFT JOIN PUBLISH.CORE_CO_OM_CDS.V_VBRP VBRP_SD\nON  VBRP_SD.MANDT = VBAP.MANDT\nAND VBRP_SD.VGBEL = VBAP.VBELN\nAND VBRP_SD.VGPOS = VBAP.POSNR\n\n--Billing Doc Hdr for Debit/Credit Memos\nLEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_VBRK VBRK_SD\nON  VBRP_SD.MANDT = VBRK_SD.MANDT\nAND VBRP_SD.VBELN = VBRK_SD.VBELN\nAND VBRK_SD.VBTYP in ('M','O','P')  --only customer invoices, no flash docs\n\n*/\n\n--Partner Function Join to get the CSR\nLEFT JOIN VBPA_PARTNERS VBPA_ZC\nON VBAK.MANDT = VBPA_ZC.MANDT\nAND VBAK.VBELN = VBPA_ZC.VBELN\nAND VBPA_ZC.PARVW = 'ZC'\n\n-- Join to SAP Hr View to to get a User ID and it's the 3M User ID\nLEFT OUTER JOIN ( -- have to make sure we only get one row back"
+  },
+  {
+    "block_id": "71",
+    "block_group": 71,
+    "block_type": "SELECT",
+    "start_block": 71,
+    "end_block": 71,
+    "parent_block_id": "",
+    "text": "SELECT PERNR\n    ,MIN(USRID) as USRID\n    ,MANDT\n    FROM PUBLISH.MDM_S4HANA_BASE.V_PA0105 --DCB why was this using MAIN\n    WHERE SUBSTR(USRID,1,1) <> 'X' -- these look bogus\n    AND SUBSTR(USRID,1,3) <> 'SAC' -- these look bogus\n    GROUP BY  ALL\n) SAP_HR\nON VBPA_ZC.PERNR = SAP_HR.PERNR\nAND VBPA_ZC.MANDT = SAP_HR.MANDT\n\n-- use the User ID above to find the Supervisor -- will change with S/4\n-- MDM_BASE.EID_WORKFORCE will replace GEDW_VTWORKFORCE\nLEFT OUTER JOIN PUBLISH.MDM_BASE.EID_WORKFORCE WFcsr\nON SAP_HR.USRID = WFcsr.USER_PIN\nAND WFcsr.USER_PIN <> ''\n\n\n--Join on Supervisor ID to get Supervisor Name\n-- MDM_BASE.EID_WORKFORCE will replace GEDW_VTWORKFORCE\nLEFT OUTER JOIN PUBLISH.MDM_BASE.EID_WORKFORCE WFSup\nON WFcsr.SUPV_ID = WFSup.PRSN_ID  -- (Replaced PERSON_ID with PRSN_ID and SUPERVISOR_ID with SUPV_ID)\n\n-- Partner Function - Cust Sold To -- don't need as KUNNR on VBAK is the Sold To\n--LEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_VBPA VBPA_AG\n--ON VBPA_AG.VBELN = VBAP.VBELN --AND VBPA_AG.POSNR = '000000'\n--AND VBPA_AG.PARVW = 'AG'\n\n-- Partner Function - Cust Ship To\nLEFT JOIN VBPA_PARTNERS VBPA_WE\nON  VBAK.MANDT = VBPA_WE.MANDT\nAND VBAK.VBELN = VBPA_WE.VBELN\nAND VBPA_WE.PARVW = 'WE'\n\n-- Customer Master - Ship To\nLEFT JOIN PUBLISH.CORE_MDM_CDS.V_KNA1 KNA1_WE\nON KNA1_WE.KUNNR = VBPA_WE.KUNNR\n--AND KNA1_WE.SRCE_ID ='MDM_S4HANA_BASE'\n\n--Join to get Country Desc of Ship To Country\nLEFT JOIN PUBLISH.MDM.GCSA_GC_CNTRYC_ALL ST_CNTRY\nON  KNA1_WE.LAND1 = ST_CNTRY.CTRY_CODE\nAND ST_CNTRY.curr_ind = 'Y'\nAND ST_CNTRY.lang_qlfr_code = 'EN001'\n\n\n--Customer Master - Sold To\nLEFT JOIN PUBLISH.CORE_MDM_CDS.V_KNA1  KNA1_SOLD\nON KNA1_SOLD.KUNNR = VBAK.KUNNR\n--AND KNA1_SOLD.SRCE_ID ='MDM_S4HANA_BASE'\n\n--Bill To Function\nLEFT JOIN VBPA_PARTNERS VBPA_RE\nON  VBAK.MANDT = VBPA_RE.MANDT\nAND VBAK.VBELN = VBPA_RE.VBELN\nAND VBPA_RE.PARVW = 'RE'\n\n-- Customer Master - Bill To\nLEFT JOIN PUBLISH.CORE_MDM_CDS.V_KNA1 KNA1_RE\nON KNA1_RE.KUNNR = VBPA_RE.KUNNR\n--AND KNA1_RE.SRCE_ID ='MDM_S4HANA_BASE'\n\n--Payer Partner Function\nLEFT JOIN VBPA_PARTNERS VBPA_RG\nON  VBAK.MANDT = VBPA_RG.MANDT\nAND VBAK.VBELN = VBPA_RG.VBELN\nAND VBPA_RG.PARVW = 'RG'\n\n-- Customer Master - Payer\nLEFT JOIN  PUBLISH.CORE_MDM_CDS.V_KNA1  KNA1_RG\nON KNA1_RG.KUNNR = VBPA_RG.KUNNR\n--AND KNA1_RG.SRCE_ID ='MDM_S4HANA_BASE'\n\n--Pricing Partner Function\nLEFT JOIN VBPA_PARTNERS VBPA_ZP\nON  VBAK.MANDT = VBPA_ZP.MANDT\nAND VBAK.VBELN = VBPA_ZP.VBELN\nAND VBPA_ZP.PARVW = 'ZP'\n\n-- Customer Master - Pricing Partner\nLEFT JOIN  PUBLISH.CORE_MDM_CDS.V_KNA1  KNA1_ZP\nON KNA1_ZP.KUNNR = VBPA_ZP.KUNNR\n--AND KNA1_ZP.SRCE_ID ='PUBLISH.MDM_S4HANA_BASE'\n\n--Ultimate Dest Ctry Cd Partner Function\nLEFT JOIN VBPA_PARTNERS VBPA_YU\nON  VBAK.MANDT = VBPA_YU.MANDT\nAND VBAK.VBELN = VBPA_YU.VBELN\nAND VBPA_YU.PARVW = 'YU'\n\n--Sales Rep Partner Function\nLEFT JOIN VBPA_PARTNERS VBPA_ZS\nON  VBAK.MANDT = VBPA_ZS.MANDT\nAND VBAK.VBELN = VBPA_ZS.VBELN\nAND VBPA_ZS.PARVW = 'ZS' --need to validate ZS is for Sales Reps\n\n-- Join to SAP Hr View to to get a User ID and it's the 3M User ID\nLEFT OUTER JOIN ( -- have to make sure we only get one row back"
+  },
+  {
+    "block_id": "72",
+    "block_group": 72,
+    "block_type": "SELECT",
+    "start_block": 72,
+    "end_block": 72,
+    "parent_block_id": "",
+    "text": "SELECT PERNR\n    ,MIN(USRID) as USRID\n    ,MANDT\n    FROM PUBLISH.MDM_S4HANA_BASE.V_PA0105 --DCB why was this using MAIN\n    WHERE SUBSTR(USRID,1,1) <> 'X' -- these look bogus\n    AND SUBSTR(USRID,1,3) <> 'SAC' -- these look bogus\n    GROUP BY  ALL\n) SAP_HR_ZS\nON VBPA_ZS.PERNR = SAP_HR_ZS.PERNR\nAND VBPA_ZS.MANDT = SAP_HR_ZS.MANDT\n\n-- use the User ID above to find the Supervisor -- will change with S/4\n-- MDM_BASE.EID_WORKFORCE will replace GEDW_VTWORKFORCE\nLEFT OUTER JOIN PUBLISH.MDM_BASE.EID_WORKFORCE WFrep\nON SAP_HR_ZS.USRID = WFrep.USER_PIN\nAND WFrep.USER_PIN <> ''\n\n\n--Cust/CSR Group Partner Function\nLEFT JOIN VBPA_PARTNERS VBPA_YG\nON  VBAK.MANDT = VBPA_YG.MANDT\nAND VBAK.VBELN = VBPA_YG.VBELN\nAND VBPA_YG.PARVW = 'YG'\n\n-- Customer Master - CSR/Cust Group\nLEFT JOIN  PUBLISH.CORE_MDM_CDS.V_KNA1  KNA1_YG\nON KNA1_YG.KUNNR = VBPA_YG.KUNNR\n--AND KNA1_YG.SRCE_ID ='MDM_S4HANA_BASE'\n\n-- Material Master\nLEFT JOIN PUBLISH.MDM.MATERIAL MARA\nON  MARA.MATL_NO = VBAP.MATNR\n--AND MARA.SRCE_ID ='MDM_S4HANA_BASE'\n\n-- Material Plant Data\n--LEFT JOIN MDM.MATERIAL_PLANT MARC --this MDM view does not contain DS4 data\n--ON  MARC.MATL_NO = VBAP.MATNR\n--AND MARC.PLNT_CD = VBAP.WERKS\n\n/*LEFT JOIN PUBLISH.MDM_S4HANA_BASE.V_MARC MARC\nON  MARC.MANDT = VBAP.MANDT\nAND MARC.MATNR = VBAP.MATNR\nAND MARC.WERKS = VBAP.WERKS*/\n\nLEFT JOIN PUBLISH.MDM.MATERIAL_PLANT MARC  -- changed the table to MATERIAL_PLANT as its a blended data\n--ON  MARC.TAS_SRCE_ID = VBAP.MANDT\non MARC.MATL_NO = VBAP.MATNR\nand MARC.PLNT_CD_SOLV  = VBAP.WERKS\nAND MARC.SRCE_ID='MDM_S4HANA_BASE' --need to keep\n\nLEFT JOIN PUBLISH.CORE_MDM_CDS.V_T024D T024D\n--ON  RIGHT(MARC.TAS_SRCE_ID,3) = T024D.MANDT\nON MARC.PLNT_CD_SOLV = T024D.WERKS\nAND MARC.MRP_CTLR_ID = T024D.DISPO\n\n-- Material Sales Data (blended)\nLEFT JOIN PUBLISH.MDM.MATERIAL_SALES_ORG MVKE\nON  MVKE.MATL_NO               = VBAP.MATNR\nAND MVKE.SAP_SLS_ORG_CD_SOLV   = VBAK.VKORG\nAND MVKE.SAP_DIST_CHNL_CD_SOLV = VBAK.VTWEG\nAND MVKE.SRCE_ID ='MDM_S4HANA_BASE'\n\n--Plant Master -- Uncomment once the data is blended with S4\n--LEFT OUTER JOIN MDM.PLANT T001W\n--ON T001W.PLNT_CD = VBAP.WERKS\n\n-- need to remove below join once the data is blended with S4 for Plant Master\nLEFT OUTER JOIN PUBLISH.MDM_S4HANA_BASE.V_T001W T001W\nON  T001W.MANDT = VBAP.MANDT\nAND T001W.WERKS = VBAP.WERKS\n\n--with statement above does all the work\nLEFT OUTER JOIN PURCH_ORDER\nON  PURCH_ORDER.MANDT = VBAP.MANDT\nAND PURCH_ORDER.VBELN = VBAP.VBELN\nAND PURCH_ORDER.POSNR = VBAP.POSNR\n\n--Sales Districts are being replaced by Customer Groups in S4 - via Melissa email\n--LEFT OUTER JOIN MDM_MMMSAP_BASE.T171T T171T\n--ON VBKD_SD.BZIRK = T171T.BZIRK --and T171T.SPRAS = 'E'\n\n-- Join on Sales Doc Item Create Date - this needs to change to S4 version eventually\nLEFT OUTER JOIN (select distinct DATE,FACTORY_CALENDAR, SHIPPING_DATE_ORDER,SOURCE_SYSTEM_CODE from PUBLISH.GSC_LEX_PUBLIC.V_FACTORY_HOLIDAY_CAL_WORKING_DAYS) WD_START_SDI\nON WD_START_SDI.DATE = Sales_Doc_Item_Create_Date\nAND WD_START_SDI.FACTORY_CALENDAR = T001W.FABKL--T001W.FACT_CLDR_ID (need to revert back once the data is blended with S4 for Plant Master)\nAND WD_START_SDI.SOURCE_SYSTEM_CODE='S4'\n--Segregation of Duties Compliance Report - DARTCO-589\n--LEFT OUTER JOIN CHANGE_LOG_BILL_BLOCK --CD (Change Log Data) created at top in WITH\n--ON CHANGE_LOG_BILL_BLOCK.Sales_Doc_Nbr = VBAK.VBELN\n\n--Billing Block Header - Change Log for VBAK\nLEFT JOIN CHG_LOG_VBAK_BLK BILL_BLK_HDR\nON  VBAK.VBELN = BILL_BLK_HDR.Sales_Doc_Nbr\nAND BILL_BLK_HDR.FNAME = 'FAKSK'  --join to last Billing block removed row\n\n--Billing Block Line - Change Log\nLEFT JOIN CHG_LOG_VBAP_BLK BILL_BLK_LN\nON  VBAP.VBELN = BILL_BLK_LN.Sales_Doc_Nbr\nAND VBAP.POSNR = BILL_BLK_LN.Sales_Doc_Item_Nbr\nAND BILL_BLK_LN.FNAME = 'FAKSP'\n\n--Delivery Block Header - Change Log for VBAK\nLEFT JOIN CHG_LOG_VBAK_BLK DEL_BLK_HDR\nON  VBAP.VBELN = DEL_BLK_HDR.Sales_Doc_Nbr\nand DEL_BLK_HDR.FNAME = 'LIFSK'\n\n--Change Log Delivery Block Join on Line - entered in CLog at Sched Line Level\nLEFT JOIN CHG_LOG_VBEP_BLK DEL_BLK_LN\nON  VBAP.VBELN = DEL_BLK_LN.Sales_Doc_Nbr\nAND VBAP.POSNR = DEL_BLK_LN.Sales_Doc_Item_Nbr\nAND DEL_BLK_LN.FNAME = 'LIFSP'\n\n--Change Log data for the Rejected Date on a Rejected_Line\nLEFT JOIN CHANGE_LOG_REJ\nON  CHANGE_LOG_REJ.sales_doc_nbr      = VBAP.VBELN\nAND CHANGE_LOG_REJ.sales_doc_item_nbr = VBAP.POSNR\nAND CHANGE_LOG_REJ.value_new          = VBAP.ABGRU\n\n-- Join to EID_WORKFORCE View to to get a User name corresponding to Last_Billing_Block_Removed_By\n\nLEFT OUTER JOIN PUBLISH.MDM_BASE.EID_WORKFORCE WF_Last_Billing\nON coalesce(BILL_BLK_HDR.USERNAME,BILL_BLK_LN.USERNAME)  = WF_Last_Billing.USER_PIN\nAND WF_Last_Billing.USER_PIN <> ''\n\n-- Join to EID_WORKFORCE View to to get a User name corresponding to Last_Delivery_Block_Removed_By\nLEFT OUTER JOIN PUBLISH.MDM_BASE.EID_WORKFORCE WF_Last_Delivery\nON coalesce(DEL_BLK_HDR.USERNAME,DEL_BLK_LN.USERNAME)   = WF_Last_Delivery.USER_PIN\nAND WF_Last_Delivery.USER_PIN <> ''\n\n-- Join to Calendar data on Today\nLEFT OUTER JOIN (select distinct DATE,FACTORY_CALENDAR, SHIPPING_DATE_ORDER,SOURCE_SYSTEM_CODE from PUBLISH.GSC_LEX_PUBLIC.V_FACTORY_HOLIDAY_CAL_WORKING_DAYS) WD_END\nON  WD_END.DATE = CURRENT_DATE\nAND WD_END.FACTORY_CALENDAR = T001W.FABKL --T001W.FACT_CLDR_ID (need to revert back once the data is blended with S4 for Plant Master)\nAND WD_END.SOURCE_SYSTEM_CODE='S4'\n-- Join to T630R - for Pick Pack Values - 1st time on Ship Point and Route\nLEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_t630r T630R\nON  VBAP.VSTEL = T630R.VSTEL\nAND VBAP.ROUTE = T630R.ROUTE\nAND VBAP.MANDT = T630R.MANDT\nAND T630R.GRULG = ''\n\n-- Join to T630R - for Pick Pack Values - 2nd time on Ship Point with No Route\nLEFT JOIN  PUBLISH.CORE_CO_COMMON_CDS.V_t630r T630R_SP\nON  VBAP.VSTEL = T630R_SP.VSTEL\nAND VBAP.MANDT = T630R_SP.MANDT\nAND T630R_SP.ROUTE = ''\nAND T630R_SP.GRULG = ''\n\n/* Added for DARTCO-562 - Manually Priced Order Line */\nLEFT OUTER JOIN PUBLISH.CORE_CO_OM_CDS.V_PRCD_ELEMENTS KONV\n    ON  COALESCE(BD_OBD.KNUMV,BD_SD.KNUMV) = KONV.KNUMV\n\tAND COALESCE(BD_OBD.POSNR,BD_SD.POSNR )= KONV.KPOSN\n    AND KONV.KSCHL='ZMAN'\n\tAND trim(KONV.KINAK)=''\n\n --Document Type Text\nLEFT OUTER JOIN PUBLISH.CORE_CO_OM_MAIN.V_TVAKT TVAKT\n    ON  VBAK.AUART = TVAKT.AUART\n    AND VBAK.MANDT = TVAKT.MANDT\n\tAND TVAKT.SPRAS = 'EN'\n\nLEFT OUTER JOIN (\n--Created a SD Item level table with Summed Goods Issued Value and Qty's"
+  },
+  {
+    "block_id": "73",
+    "block_group": 73,
+    "block_type": "SELECT",
+    "start_block": 73,
+    "end_block": 73,
+    "parent_block_id": "",
+    "text": "SELECT VBAP.MANDT\n    ,VBAP.VBELN\n    ,VBAP.POSNR\n    ,SUM(COALESCE(LIPS.GOODS_ISSUED_NET_VALUE,0))          as Sales_Doc_Item_Goods_Issued_Value_Sum\n    --,SUM(COALESCE(LIPS.GOODS_ISSUED_NET_VALUE_USD_SRFR,0)) as Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR\n\t--,SUM(COALESCE(LIPS.GOODS_ISSUED_NET_VALUE_USD_DOC_DT_FIXED_SRFR,0)) as Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR\n\t,SUM(COALESCE(LIPS.GOODS_ISSUED_NET_VALUE_USD_DOC_DT_DYNAMIC_SRFR,0)) as Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR\n\t,SUM(to_decimal(COALESCE(LIPS.GOODS_ISSUE_QTY_BUOM,0),15,2))           as Sales_Doc_Item_Goods_Issued_Qty_BUOM_Sum\n    ,SUM(to_decimal(COALESCE(LIPS.GOODS_ISSUE_QTY_SUOM,0),15,2))            as Sales_Doc_Item_Goods_Issued_Qty_SUOM_Sum\n    --,SUM(COALESCE(LIPS.GOODS_ISSUE_QTY_BUOM,0))            as Sales_Doc_Item_Goods_Issued_Qty_BUOM_Sum\n    --,SUM(COALESCE(LIPS.GOODS_ISSUE_QTY_SUOM,0))            as Sales_Doc_Item_Goods_Issued_Qty_SUOM_Sum\n    ,COUNT(DISTINCT LIPS.VBELN)                            as Sales_Doc_Item_Delivery_Count\n    FROM  PUBLISH.CORE_CO_OM_CDS.V_VBAK VBAK\n\tINNER JOIN PUBLISH.CORE_CO_OM_CDS.V_VBAP VBAP\n\tON VBAK.VBELN = VBAP.VBELN\n\tAND VBAK.MANDT = VBAP.MANDT\n    LEFT JOIN  PUBLISH.CORE_CO_OM_CDS.V_LIPS LIPS\n     ON VBAP.MANDT = LIPS.MANDT\n    AND VBAP.VBELN = LIPS.VGBEL\n    AND VBAP.POSNR = LIPS.VGPOS\n\tAND VBAK.VBTYP = LIPS.VGTYP\n    --AND LIPS.VGTYP = 'C' --limit to Del Docs created by Sales Doc\n    AND LIPS.UECHA = '000000' --Only Master Row\n\tand (LIPS.KCMENG + lips.LFIMG) >0\n    GROUP BY ALL) VBAP_SUM_GI\n\tON  VBAP_SUM_GI.MANDT = VBAP.MANDT\n    AND VBAP_SUM_GI.VBELN = VBAP.VBELN\n\tAND VBAP_SUM_GI.POSNR = VBAP.POSNR\n\n--Order Reason Code Text\nLEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_TVAUT TVAUT\n    ON VBAK.AUGRU = TVAUT.AUGRU\n    AND VBAK.MANDT = TVAUT.MANDT\n    AND TVAUT.SPRAS = 'EN'\n\n--pull in OTIF and ProdAvail related fields\nLEFT JOIN  PUBLISH.CORE_CO_COMMON_CDS.V_OTIF_AND_PRODAVAIL OTIFPROD\n\tON  OTIFPROD.CLIENT = VBAP.MANDT\n\tAND OTIFPROD.VBELN  = VBAP.VBELN\n\tAND OTIFPROD.POSNR  = VBAP.POSNR\n\n--Join to get CSR Notes on Sales Doc Only\n\nLEFT JOIN ("
+  },
+  {
+    "block_id": "74",
+    "block_group": 74,
+    "block_type": "SELECT",
+    "start_block": 74,
+    "end_block": 74,
+    "parent_block_id": "",
+    "text": "SELECT TDNAME\n    ,TDID\n    ,ZTTEXT\n    ,TDLDATE\n    ,TDLTIME\n    --,TIMESTAMP_FROM_PARTS(DATE(TDLDATE,'YYYYMMDD'),TRY_TO_TIME(TDLTIME)) as CLTIMESTAMP\n    FROM PUBLISH.CORE_CO_COMMON_CDS.V_ZSTXL\n    WHERE TDOBJECT in ('VBBK','VBBP')\n    AND TDID = 'Z002'\n    QUALIFY ROW_NUMBER() OVER (PARTITION BY TDNAME ORDER BY TDLDATE,TDLTIME DESC) = 1\n) CSRHDRTXT\nON CSRHDRTXT.TDNAME = VBAK.VBELN\n\n--Join to get CSR Notes on Sales Doc and Sales Line\nLEFT JOIN ("
+  },
+  {
+    "block_id": "75",
+    "block_group": 75,
+    "block_type": "SELECT",
+    "start_block": 75,
+    "end_block": 75,
+    "parent_block_id": "",
+    "text": "SELECT TDNAME\n    ,TDID\n    ,ZTTEXT\n    ,TDLDATE\n    ,TDLTIME\n    --,TIMESTAMP_FROM_PARTS(DATE(TDLDATE,'YYYYMMDD'),TRY_TO_TIME(TDLTIME)) as CLTIMESTAMP\n    FROM PUBLISH.CORE_CO_COMMON_CDS.V_ZSTXL\n    WHERE TDOBJECT in ('VBBK','VBBP')\n    AND TDID = 'Z020'\n    QUALIFY ROW_NUMBER() OVER (PARTITION BY TDNAME ORDER BY TDLDATE,TDLTIME DESC) = 1\n) CSRLINETXT\nON CSRLINETXT.TDNAME = (VBAK.VBELN || VBAP.POSNR)\n\n--Join to get CSR Notes on Sales Doc and Sales Line\nLEFT JOIN ("
+  },
+  {
+    "block_id": "76",
+    "block_group": 76,
+    "block_type": "SELECT",
+    "start_block": 76,
+    "end_block": 76,
+    "parent_block_id": "",
+    "text": "SELECT TDNAME\n    ,TDID\n    ,ZTTEXT\n    ,TDLDATE\n    ,TDLTIME\n    --,TIMESTAMP_FROM_PARTS(DATE(TDLDATE,'YYYYMMDD'),TRY_TO_TIME(TDLTIME)) as CLTIMESTAMP\n    FROM PUBLISH.CORE_CO_COMMON_CDS.V_ZSTXL\n    WHERE TDOBJECT in ('VBBK','VBBP')\n    AND TDID = 'ZMAN'\n    QUALIFY ROW_NUMBER() OVER (PARTITION BY TDNAME ORDER BY TDLDATE,TDLTIME DESC) = 1\n) CSRZMAN\nON CSRZMAN.TDNAME = (VBAK.VBELN || VBAP.POSNR)\n\n--LEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_EKKO EKKO\n--ON  EKKO.MANDT = PURCH_ORDER.PURCH_ORDER_NBR\n\n--Join to TM Header Table to get BASE_BTD_DATE --TM not populaing this table in S4\n--LEFT JOIN CO_COMMON_SHARED.V_D_TRQROT TM_HDR\n--ON  TM_HDR.MANDT = VBAK.MANDT\n--AND RIGHT(TM_HDR.BASE_BTD_ID,10) = VBAK.VBELN\n\n--lookup table for Plan Strat Group\nLEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_T461X T461X\n--ON  T461X.MANDT = MARC.TAS_SRCE_ID  --MARC does not have MANDT due to some issue\nON T461X.STRGR = MARC.PLNG_STRG_GRP_CD\nAND T461X.SPRAS = 'EN'\n\n--Look up for Cust PO Ord Type\nLEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_T176T T176T\nON  T176T.MANDT = VBKD_SD.MANDT\nAND T176T.BSARK = VBKD_SD.BSARK\nAND T176T.SPRAS = 'EN'\n\nLEFT JOIN PUBLISH.CORE_MDM_CDS.V_KNVV KNVV\nOn  VBAK.KUNNR = KNVV.KUNNR\nAnd VBAK.VTWEG = KNVV.VTWEG\nAnd VBAK.VKORG = KNVV.VKORG\n\n--Add Join to this ZT Partner\nLEFT JOIN VBPA_PARTNERS VBPA_ZT\nON  VBAK.MANDT = VBPA_ZT.MANDT\nAND VBAK.VBELN = VBPA_ZT.VBELN\nAND VBPA_ZT.PARVW = 'ZT'\n\n--Credit Hold Removed Date Block Header - Change Log for VBAK\nLEFT JOIN CHG_LOG_VBAK_BLK CRED_HOLD\nON  VBAK.VBELN = CRED_HOLD.Sales_Doc_Nbr\nAND CRED_HOLD.FNAME = 'CMGST'\n\nLEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_TVFST TVFST_HDR\nON  TVFST_HDR.MANDT = VBAK.MANDT\nAND TVFST_HDR.FAKSP = VBAK.FAKSK  --Billing Block from SD Header\nAND TVFST_HDR.SPRAS='EN'\n\nLEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_TVFST TVFST_ITEM\nON  TVFST_ITEM.MANDT = VBAP.MANDT\nAND TVFST_ITEM.FAKSP = VBAP.FAKSP --Billing Block from SD Line\nAND TVFST_ITEM.SPRAS='EN'\n\nLEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_TVFST TVFST_DHDR\nON  TVFST_DHDR.MANDT = LIKP.MANDT\nAND TVFST_DHDR.FAKSP = LIKP.FAKSK --Billing Block from DD Header\nAND TVFST_DHDR.SPRAS='EN'\n\nLEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_TVFST TVFST_DITEM\nON  TVFST_DITEM.MANDT = LIPS.MANDT\nAND TVFST_DITEM.FAKSP = LIPS.FAKSP  --Billing Block from DD Line\nAND TVFST_DITEM.SPRAS='EN'\n\nLEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_TVLST TVLST\nON  TVLST.MANDT = VBAK.MANDT\nAND TVLST.LIFSP = VBAK.LIFSK        --Delivery Block from SD Header\nAND TVLST.SPRAS='EN'\n\nLEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_TVLST TVLST_SITEM\nON  TVLST_SITEM.MANDT = VBEP_MR.MANDT\nAND TVLST_SITEM.LIFSP = VBEP_MR.LIFSP        --Delivery Block from SD Sline\nAND TVLST_SITEM.SPRAS='EN'\n\n--Join to PIPO table to pickup Phase In data\nLEFT JOIN (  -- there could be more than one phase In number in this table\n    -- --SAME TABLE FOR BOTH ECC AND S4"
+  },
+  {
+    "block_id": "77",
+    "block_group": 77,
+    "block_type": "SELECT",
+    "start_block": 77,
+    "end_block": 77,
+    "parent_block_id": "",
+    "text": "select matl_no\n    ,min(rsn_tx) as rsn_tx\n    ,listagg(rptg_ref_matl_no,';') as RPTG_REF_MATL_NO\n    from PUBLISH.MDM.MATERIAL_PIPO PIPO\n    where CURRENT_DATE between vald_from_dt and vald_to_dt\n    or vald_to_dt is null\n    group by all\n\n) PIPO\nON VBAP.MATNR = PIPO.MATL_NO\n\n--join to ECC LIKP to get the Actual GI Date for the ZINT created in PLRS - need for Shipped Not Billed Compliance report\n--left join publish.co_order_management.likp ECC_ZINT_LIKP\n--on  snake.obd_nbr = ECC_ZINT_LIKP.VBELN\n\n--These are the ZINT SOLD To's that Transact Normally in SAP (this disinquishes the ZINTs between Normal and Interim)\n--left join PUBLISH.CORE_CO_OM_MAIN.ZINT_SOLD_TO_NORMAL ZINT_SOLD_TO_NORMAL\n--on VBAK.KUNNR = ZINT_SOLD_TO_NORMAL.Sold_To_Nbr\n\n--Left Join to Cockpit Control. A match signals an Interim SO and also pick u the Scnd SD Nbr for a join to ECC BL/BO data below\nleft join ("
+  },
+  {
+    "block_id": "78",
+    "block_group": 78,
+    "block_type": "SELECT",
+    "start_block": 78,
+    "end_block": 78,
+    "parent_block_id": "",
+    "text": "select  CC.orig_doc_nbr\n    ,CC.orig_doc_item_nbr\n    ,CC.orig_doc_create_date\n    --,'Y' as Interim_Sales_Order_Ind\n    --,CC.ORIG_SDM_SALES_DOC_ITEM_NET_VALUE\n    --,CC.ORIG_SDM_SALES_DOC_ITEM_ORD_QTY_SALES_UNIT\n    ,CC.Scnd_SD_Nbr      AS Scnd_SD_nbr      -- will be used to join to ECC BL/BO to pull in Prod Avail Ind\n    ,CC.Scnd_SD_Item_Nbr AS Scnd_SD_Item_Nbr  -- will be used to join to ECC BLBO to pull in Prod Avail Ind\n\t,MAX(CC.SDM_SCND_OTIF_MEASURE_DATE)             AS SDM_SCND_OTIF_MEASURE_DATE\n\t,max(CC.SDM_SCND_BLOCKED_REASON )               AS SDM_SCND_BLOCKED_REASON\n\t,max(CC.SCND_SDM_SALES_DOC_SHIPPING_PLANT )     AS SCND_SDM_SALES_DOC_SHIPPING_PLANT\n\t,max(CC.SDM_SCND_SALES_DOC_SHIPPING_PLANT_NAME) AS SDM_SCND_SALES_DOC_SHIPPING_PLANT_NAME\n\t,max(CC.SDM_SCND_SALES_ORG_CD  )               AS SDM_SCND_SALES_ORG_CD\n    ,max(CC.SDM_SCND_SALES_ORG_NAME )               AS SDM_SCND_SALES_ORG_NAME\n    ,max(CC.SDM_SCND_SALES_UNIT  )                  as SDM_SCND_SALES_UNIT\n    ,max(CC.sdm_scnd_sales_doc_item_reject_reason_cd) as sdm_scnd_sales_doc_item_reject_reason_cd\n    --can remove MAX afer Caleb fixes the Dups in Cockpit caused by Planned GI Measure Date\n\t,max(CC.SDM_SCND_SALES_DOC_ITEM_NET_VALUE )          as SDM_SCND_SALES_DOC_ITEM_NET_VALUE\n    ,max(CC.SDM_SCND_SALES_DOC_ITEM_NET_VALUE_USD_SRFR )          as SDM_SCND_SALES_DOC_ITEM_NET_VALUE_USD_SRFR\n    ,max(CC.SDM_SCND_BACKLOG_IND   )                             AS SDM_SCND_BACKLOG_IND\n\t,max(CC.SDM_SCND_BACKORDER_IND   )                            AS SDM_SCND_BACKORDER_IND\n\t,max(CC.SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE )           AS SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE\n\t,max(CC.SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE_USD_SRFR)   AS SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE_USD_SRFR\n\t,max(CC.SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE )         AS SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE\n\t,max(CC.SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE_USD_SRFR) AS SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE_USD_SRFR\n    ,max(CC.SDM_SCND_SALES_DOC_ITEM_ORD_QTY_SALES_UNIT   )        as SDM_SCND_SALES_DOC_ITEM_ORD_QTY_SALES_UNIT\n\t,max(DELV_ACT_GI_DATE ) as SCND_SD_Delivery_Doc_Actual_Goods_Issued_Date\n\t,max(ZF2_DOCUMENT_BILLING_STATUS)   as SCND_SD_Delivery_Doc_Billing_Status\n    ,max(CC.ORIG_SDM_SALES_DOC_ITEM_GOODS_ISSUED_QTY_BUOM_SUM ) as ORIG_SDM_SALES_DOC_ITEM_GOODS_ISSUED_QTY_BUOM_SUM\n    ,max(CC.ORIG_SDM_SALES_DOC_ITEM_GOODS_ISSUED_QTY_SUOM_SUM) as  ORIG_SDM_SALES_DOC_ITEM_GOODS_ISSUED_QTY_SUOM_SUM\n    ,max(CC.SDM_SCND_SALES_DOC_ITEM_GOODS_ISSUED_QTY_BUOM_SUM) as  SDM_SCND_SALES_DOC_ITEM_GOODS_ISSUED_QTY_BUOM_SUM\n    ,max(CC.SDM_SCND_SALES_DOC_ITEM_GOODS_ISSUED_QTY_SUOM_SUM) as  SDM_SCND_SALES_DOC_ITEM_GOODS_ISSUED_QTY_SUOM_SUM\n\t,MAX(CC.SDM_SCND_PLANNED_GI_MEASURE_DATE)       AS SDM_SCND_PLANNED_GI_MEASURE_DATE\n    ,MAX(CC.SDM_SCND_CURRENT_EXPECTED_DELIVERY_DATE)    as  SDM_SCND_CURRENT_EXPECTED_DELIVERY_DATE\nfrom publish.CORE_COCKPIT_CDS.V_COCKPIT_CONTROL CC\n    where orig_doc_kind = 'SO'     --join only only to Sales Docs\n      and orig_doc_srce = 'S4'     --join only to Sales Docs created from ECC\n      and scenario      = 'DS1_3'  --join only to Polaris to Nova Scenario\n      and coalesce(sdm_scnd_sales_doc_item_reject_reason_cd, '') in ('','A6','A8','CT','LQ') -- join to exclude rejected second SD lines\n\t  --qualify row_number() OVER(PARTITION BY orig_doc_nbr,orig_doc_item_nbr ORDER BY DELV_ACT_GI_DATE desc ) = 1\n      group by all\n) snake_orig\nON  vbap.vbeln            = snake_orig.orig_doc_nbr\nAND ltrim(vbap.posnr,'0') = ltrim(snake_orig.orig_doc_item_nbr,'0')\n\n\n--Left Join to Cockpit Control to see if theres match to set Interim Sales Order Ind\n\nleft join ("
+  },
+  {
+    "block_id": "79",
+    "block_group": 79,
+    "block_type": "SELECT",
+    "start_block": 79,
+    "end_block": 79,
+    "parent_block_id": "",
+    "text": "select  CC.orig_doc_nbr\n    ,CC.orig_doc_item_nbr\n    ,CC.orig_doc_create_date\n    ,'Y' as Interim_Sales_Order_Ind\n    from publish.CORE_COCKPIT_CDS.V_COCKPIT_CONTROL CC\n     where orig_doc_kind = 'SO'     --join only only to Sales Docs\n      and orig_doc_srce  = 'S4'     --join only to Sales Docs created from NOVA\n      and scenario       = 'DS1_3'  --join only to Nova to Polaris Scenario\n      group by all\n) snake_match\nON  vbap.vbeln                    = snake_match.orig_doc_nbr\nAND ltrim(vbap.posnr,'0') = ltrim(snake_match.orig_doc_item_nbr,'0')\n\n--join to ECC BLBO to determine Prod Avail Ind with Scnd SD Nbr and Item\nleft join ("
+  },
+  {
+    "block_id": "80",
+    "block_group": 80,
+    "block_type": "SELECT",
+    "start_block": 80,
+    "end_block": 80,
+    "parent_block_id": "",
+    "text": "select SLS_DOC_NO\n    ,SLS_DOC_ITEM_NO\n    ,BACKORDER_INDICATOR\n    ,case when  trim(PROD_AVAIL) = '' then 'X' else PROD_AVAIL end as Prod_Avail_Converted\n    from legacy_data.dftsv01.v01_fts_blbo blbo\n    where SLS_DOC_TYPE_CD = 'ZINT'\n      and blbo.SNAPSHOT_DT = ( select max(SNAPSHOT_DT) -1 from legacy_data.dftsv01.v01_fts_blbo )\n\tQUALIFY ROW_NUMBER() OVER(PARTITION BY SLS_DOC_NO, SLS_DOC_ITEM_NO ORDER BY SCHD_LINE_NO DESC) = 1\n) PLRS_ZINT_PA\non  snake_orig.scnd_sd_nbr                    = PLRS_ZINT_PA.sls_doc_no\nand ltrim(snake_orig.scnd_sd_item_nbr,'0')    = ltrim(PLRS_ZINT_PA.SLS_DOC_ITEM_NO,'0')\n\n--determine if a ZINT order was created by the Interim State\nleft join ("
+  },
+  {
+    "block_id": "81",
+    "block_group": 81,
+    "block_type": "SELECT",
+    "start_block": 81,
+    "end_block": 81,
+    "parent_block_id": "",
+    "text": "select scnd_sd_nbr\n    ,scenario\n    ,'Y' as Interim_ZINT_Ind\n    from PUBLISH.CORE_COCKPIT_CDS.V_COCKPIT_CONTROL\n    where scnd_sd_kind   = 'SO'\n      and scnd_sd_srce   = 'S4'\n      and scenario       = 'DS1_2'  -- scenario Polaris to Nova will have a Nova SD in Second field\n    group by all\n) snake_scnd\non vbap.vbeln = snake_scnd.scnd_sd_nbr --only ZINTs can be in the Scnd_SD_Nbr field\n\nLEFT OUTER JOIN PUBLISH.MDM_S4HANA_BASE.V_T151T T151T\nON KNVV.KDGRP = T151T.KDGRP\nAND T151T.SPRAS = 'EN'\n\n/*LEFT OUTER JOIN ( -- have to make sure we only get one row back"
+  },
+  {
+    "block_id": "82",
+    "block_group": 82,
+    "block_type": "SELECT",
+    "start_block": 82,
+    "end_block": 82,
+    "parent_block_id": "",
+    "text": "SELECT PERNR\n    ,MIN(USRID) as USRID\n    ,MANDT\n    FROM PUBLISH.MDM_S4HANA_BASE.V_PA0105 --DCB why was this using MAIN\n    WHERE SUBSTR(USRID,1,1) <> 'X' -- these look bogus\n    AND SUBSTR(USRID,1,3) <> 'SAC' -- these look bogus\n    GROUP BY  ALL\n) SAP_HR_VBAK\nON VBAK.ERNAM = SAP_HR_VBAK.USRID\nAND VBAK.MANDT = SAP_HR_VBAK.MANDT*/\n\n-- use the User ID above to find the Supervisor -- will change with S/4\n-- PUBLISH.MDM_BASE.EID_WORKFORCE will replace GEDW_VTWORKFORCE\nLEFT OUTER JOIN PUBLISH.MDM_BASE.EID_WORKFORCE WF_CREATED_BY\nON VBAK.ERNAM = WF_CREATED_BY.USER_PIN\nAND WF_CREATED_BY.USER_PIN <> ''\n\n\nLEFT JOIN PUBLISH.GSC_COMMON_PUBLIC.V_PRIM_ULT_SPLY_LOC PRIM_ULT_SPLY_LOC\n--on coalesce(snake_orig.SCND_SDM_SALES_DOC_SHIPPING_PLANT,VBAP.WERKS) =PRIM_ULT_SPLY_LOC.DEMAND_PLANT_CD\non    MARC.MATL_NO = PRIM_ULT_SPLY_LOC.MATERIAL_NUMBER\nAND MARC.PLNT_CD = PRIM_ULT_SPLY_LOC.DEMAND_PLANT_CD\n\nLEFT JOIN PUBLISH.MDM_S4HANA_BASE.V_TVKO TVKO_PLANT\nON T001W.VKORG=TVKO_PLANT.VKORG\n\n\nleft join PUBLISH.FIN_DIM_PUBLIC.GEOGRAPHY_HIER  geo\n--on coalesce(snake_orig.SCND_SDM_SALES_DOC_SHIPPING_PLANT,VBAP.WERKS)=geo.SAP_CO_CODE\non TVKO_PLANT.BUKRS =geo.SAP_CO_CODE\nAND geo.SAP_CO_CODE <> '~'\nAND geo.SOLV_LGL_ENTY_IND = 'Y'\n\nleft join PUBLISH.CORE_CO_COMMON_CDS.V_VBEP vbep_frst\non vbap.vbeln = vbep_frst.vbeln\nand vbap.posnr = vbep_frst.posnr\nand vbep_frst.etenr = '0001'\n\n\nWHERE VBAK.VBTYP <> 'B' --eliminate Quotations\n\n)\n\n);"
+  },
+  {
+    "block_id": "83",
+    "block_group": 83,
+    "block_type": "UPDATE",
+    "start_block": 83,
+    "end_block": 83,
+    "parent_block_id": "",
+    "text": "Update CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_WRK T1 set T1.Sales_Doc_Item_Open_Ind = T2.Sales_Doc_Item_Open_Ind\n,T1.Sales_Doc_Item_CSR_Open_Ind = T2.Sales_Doc_Item_CSR_Open_Ind\nfrom (SELECT Sales_Doc_Nbr,Sales_Doc_Item_Nbr, MAX(Sales_Doc_Item_Open_Ind) AS Sales_Doc_Item_Open_Ind , max(Sales_Doc_Item_CSR_Open_Ind) as Sales_Doc_Item_CSR_Open_Ind\nFROM CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_WRK GROUP BY Sales_Doc_Nbr ,Sales_Doc_Item_Nbr) T2\nwhere \tT1.Sales_Doc_Nbr= T2.Sales_Doc_Nbr\nAND T1.Sales_Doc_Item_Nbr = T2.Sales_Doc_Item_Nbr   ;"
+  },
+  {
+    "block_id": "84",
+    "block_group": 84,
+    "block_type": "UPDATE",
+    "start_block": 84,
+    "end_block": 84,
+    "parent_block_id": "",
+    "text": "Update CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_WRK T1 set T1.Sales_Doc_Item_Open_Category = T2.Sales_Doc_Item_Open_Category,\nT1.Sales_Doc_Item_CSR_Open_Category = T2.Sales_Doc_Item_CSR_Open_Category\nfrom (SELECT Sales_Doc_Nbr,Sales_Doc_Item_Nbr, MAX(Sales_Doc_Item_Open_Category) AS Sales_Doc_Item_Open_Category, max(Sales_Doc_Item_CSR_Open_Category) as Sales_Doc_Item_CSR_Open_Category\nFROM CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_WRK GROUP BY Sales_Doc_Nbr ,Sales_Doc_Item_Nbr) T2\nwhere \tT1.Sales_Doc_Nbr= T2.Sales_Doc_Nbr\nAND T1.Sales_Doc_Item_Nbr = T2.Sales_Doc_Item_Nbr   ;\n\n\nalter Table CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_MTLZ swap with CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_WRK;\n\n   CALL DART_MONITOR_AND_ALERT.P_ADD_PROCEDURE_LOG(:PROJECT_CODE, :PROCEDURE_NAME, :TABLE_SCHEMA, :TABLE_NAME, 'COMPLETED', 'The data refresh is completed.', :START_DATETIME, CURRENT_TIMESTAMP(),:NOTIFICATION_GROUP);"
+  },
+  {
+    "block_id": "85",
+    "block_group": 85,
+    "block_type": "RETURN",
+    "start_block": 85,
+    "end_block": 85,
+    "parent_block_id": "",
+    "text": "RETURN TRUE;\n\n    EXCEPTION\n\n      WHEN OTHER THEN\n\n        CALL DART_MONITOR_AND_ALERT.P_ADD_PROCEDURE_LOG(:PROJECT_CODE, :PROCEDURE_NAME, :TABLE_SCHEMA, :TABLE_NAME, 'ERROR', :SQLCODE || ': ' || :SQLERRM, :START_DATETIME, CURRENT_TIMESTAMP(),:NOTIFICATION_GROUP);"
+  },
+  {
+    "block_id": "86",
+    "block_group": 86,
+    "block_type": "RETURN",
+    "start_block": 86,
+    "end_block": 86,
+    "parent_block_id": "",
+    "text": "RETURN :SQLCODE || ': ' || :SQLERRM;"
+  },
+  {
+    "block_id": "87",
+    "block_group": 87,
+    "block_type": "END",
+    "start_block": 87,
+    "end_block": 87,
+    "parent_block_id": "",
+    "text": "END;\n\n    ;"
+  }
+]

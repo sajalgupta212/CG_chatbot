@@ -1,0 +1,794 @@
+[
+  {
+    "block_id": "5aeb32f6-836c-4843-913d-c4a6e980e665",
+    "block_group": 1,
+    "block_type": "DDL",
+    "start_block": 0,
+    "end_block": 39,
+    "parent_block_id": "",
+    "text": "CREATE OR REPLACE PROCEDURE PUBLISH_D.CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_MTLZ_SP() RETURNS VARCHAR(16777216) LANGUAGE SQL EXECUTE AS OWNER AS DECLARE PROCEDURE_NAME VARCHAR DEFAULT 'SALES_DOCUMENT_MASTER_MTLZ_SP'; TABLE_NAME VARCHAR DEFAULT 'SALES_DOCUMENT_MASTER_MTLZ'; PROJECT_CODE VARCHAR DEFAULT 'SALES_DOC_MASTER'; START_DATETIME DATETIME DEFAULT CURRENT_TIMESTAMP(); TABLE_SCHEMA VARCHAR DEFAULT 'CORE_CO_OM_MAIN'; NOTIFICATION_GROUP VARCHAR DEFAULT 'SALES_DOC_MASTER_NOTIFICATION_GROUP'; BEGIN"
+  },
+  {
+    "block_id": "1f81caa5-4c41-4758-99ea-7e8ab19c2ce3",
+    "block_group": 2,
+    "block_type": "DELETE",
+    "start_block": 0,
+    "end_block": 3,
+    "parent_block_id": "",
+    "text": "DELETE FROM CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_WRK;"
+  },
+  {
+    "block_id": "0df5a38e-13fd-4029-918d-e995ca802e89",
+    "block_group": 3,
+    "block_type": "DDL",
+    "start_block": 0,
+    "end_block": 10,
+    "parent_block_id": "",
+    "text": "CREATE OR REPLACE TABLE CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_WRK AS select * from ("
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 0,
+    "end_block": 150,
+    "parent_block_id": "",
+    "text": "WITH VBPA_PARTNERS AS ( SELECT MANDT ,VBELN ,PARVW ,PERNR ,KUNNR ,LAND1 ,LIFNR FROM PUBLISH.CORE_CO_COMMON_CDS.V_VBPA WHERE POSNR = '000000' AND PARVW in ('ZC','WE','RE','RG','YU','ZP','ZS','YG','ZT') ), VBEP_SUM AS ( SELECT VBEP.MANDT ,VBEP.VBELN ,VBEP.POSNR ,SUM(VBEP.BMENG) as BMENG_SUM ,SUM(CASE WHEN VBEP.UMVKN <> 0 then ROUND(VBEP.BMENG*(VBEP.UMVKZ / VBEP.UMVKN)) ELSE 0 END) AS Conf_Qty_Sum_BUOM FROM PUBLISH.CORE_CO_COMMON_CDS.V_VBEP VBEP WHERE VBEP.BMENG > 0 GROUP BY ALL ), PURCH_ORDER AS ( SELECT VBAP.MANDT ,VBAP.VBELN ,VBAP.POSNR ,VBAP.VSTEL ,vbap.werks ,VBAK.AUART ,VBAP.PSTYV ,EKPO.EBELN as Purch_Order_Nbr ,EKPO.EBELP as Purch_Order_Item_Nbr ,EKKO.UNSEZ as Purch_Order_Our_Ref ,MAX(TRY_TO_DATE(EKES_AB.EINDT,'YYYYMMDD')) as Purch_Order_Conf_Date_AB_Max ,MAX(TRY_TO_DATE(EKES_LA.EINDT,'YYYYMMDD')) as Purch_Order_Conf_Date_LA_Max from PUBLISH.CORE_CO_OM_CDS.V_VBAK VBAK inner join PUBLISH.CORE_CO_OM_CDS.V_VBAP VBAP on vbak.vbeln = vbap.vbeln inner join PUBLISH.CORE_CO_COMMON_CDS.V_EKKN EKKN on EKKN.VBELN = VBAP.VBELN and EKKN.VBELP = VBAP.POSNR inner join PUBLISH.CORE_CO_COMMON_CDS.V_EKKO EKKO on EKKO.EBELN = EKKN.EBELN inner join PUBLISH.CORE_GSC_COMMON_CDS.V_EKPO EKPO on EKPO.EBELN = EKKN.EBELN and EKPO.EBELP = right(EKKN.EBELP,5) left join PUBLISH.CORE_GSC_COMMON_CDS.V_EKES EKES_AB on ekes_ab.ebeln = EKPO.ebeln and ekes_ab.ebelp = EKPO.ebelp and ekes_ab.ebtyp = 'AB' left join PUBLISH.CORE_GSC_COMMON_CDS.V_EKES EKES_LA on ekes_la.ebeln ="
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 125,
+    "end_block": 275,
+    "parent_block_id": "",
+    "text": "= right(EKKN.EBELP,5) left join PUBLISH.CORE_GSC_COMMON_CDS.V_EKES EKES_AB on ekes_ab.ebeln = EKPO.ebeln and ekes_ab.ebelp = EKPO.ebelp and ekes_ab.ebtyp = 'AB' left join PUBLISH.CORE_GSC_COMMON_CDS.V_EKES EKES_LA on ekes_la.ebeln = ekpo.ebeln and ekes_la.ebelp = ekpo.ebelp and ekes_la.ebtyp = 'LA' and ekes_la.uecha = '000000' WHERE EKPO.LOEKZ<>'L' group by all ), CHG_LOG_VBAK_BLK as ( SELECT CDHDR.OBJECTCLAS ,CDHDR.OBJECTID as Sales_Doc_Nbr ,TRY_TO_DATE(CDHDR.UDATE,'YYYYMMDD') as Remove_Date ,TRY_TO_TIME(CDHDR.UTIME) as Remove_Time ,TIMESTAMP_FROM_PARTS(DATE(CDHDR.UDATE,'YYYYMMDD'),TRY_TO_TIME(CDHDR.UTIME)) as Remove_Time_Stamp ,CDHDR.TCODE ,CDHDR.USERNAME ,CDPOS.TABNAME ,CDPOS.FNAME ,CDPOS.CHNGIND ,CDPOS.VALUE_OLD ,CDPOS.VALUE_NEW FROM PUBLISH.CORE_CO_COMMON_CDS.V_CDHDR CDHDR INNER JOIN PUBLISH.CORE_CO_COMMON_CDS.V_CDPOS CDPOS ON CDHDR.OBJECTCLAS = CDPOS.OBJECTCLAS AND CDHDR.OBJECTID = CDPOS.OBJECTID AND CDHDR.CHANGENR = CDPOS.CHANGENR WHERE CDHDR.OBJECTCLAS = 'VERKBELEG' AND CDPOS.TABNAME = 'VBAK' AND ( (FNAME = 'LIFSK' AND VALUE_OLD between '80' and '99' and VALUE_NEW = '' ) OR (FNAME = 'CMGST' AND VALUE_OLD in ('B','C') and VALUE_NEW Not In ('B','C') ) OR (FNAME = 'FAKSK' AND VALUE_OLD between 'Z1' and 'ZY' and VALUE_NEW = '' ) ) QUALIFY ROW_NUMBER() OVER (PARTITION BY CDHDR.OBJECTID,FNAME ORDER BY TIMESTAMP_FROM_PARTS(DATE(CDHDR.UDATE,'YYYYMMDD'),TRY_TO_TIME(CDHDR.UTIME))"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 250,
+    "end_block": 400,
+    "parent_block_id": "",
+    "text": "OR (FNAME = 'FAKSK' AND VALUE_OLD between 'Z1' and 'ZY' and VALUE_NEW = '' ) ) QUALIFY ROW_NUMBER() OVER (PARTITION BY CDHDR.OBJECTID,FNAME ORDER BY TIMESTAMP_FROM_PARTS(DATE(CDHDR.UDATE,'YYYYMMDD'),TRY_TO_TIME(CDHDR.UTIME)) DESC) = 1 ), CHG_LOG_VBEP_BLK as ( SELECT CDHDR.OBJECTCLAS ,CDHDR.OBJECTID as Sales_Doc_Nbr ,CDPOS.TABKEY ,SUBSTR(CDPOS.TABKEY,14,6) as Sales_Doc_Item_Nbr ,CDHDR.CHANGENR ,TRY_TO_DATE(CDHDR.UDATE,'YYYYMMDD') as Remove_Date ,TRY_TO_TIME(CDHDR.UTIME) as Remove_Time ,TIMESTAMP_FROM_PARTS(DATE(CDHDR.UDATE,'YYYYMMDD'),TRY_TO_TIME(CDHDR.UTIME)) as Remove_Time_Stamp ,CDHDR.TCODE ,CDHDR.USERNAME ,CDPOS.TABNAME ,CDPOS.FNAME ,CDPOS.CHNGIND ,CDPOS.VALUE_OLD ,CDPOS.VALUE_NEW FROM PUBLISH.CORE_CO_COMMON_CDS.V_CDHDR CDHDR INNER JOIN PUBLISH.CORE_CO_COMMON_CDS.V_CDPOS CDPOS ON CDHDR.OBJECTCLAS = CDPOS.OBJECTCLAS AND CDHDR.OBJECTID = CDPOS.OBJECTID AND CDHDR.CHANGENR = CDPOS.CHANGENR WHERE CDHDR.OBJECTCLAS = 'VERKBELEG' AND CDPOS.TABNAME = 'VBEP' AND CDPOS.FNAME = 'LIFSP' AND CDPOS.VALUE_OLD between '80' and '99' AND CDPOS.VALUE_NEW = '' QUALIFY ROW_NUMBER() OVER (PARTITION BY CDHDR.OBJECTID,SUBSTR(CDPOS.TABKEY,14,6) ORDER BY TIMESTAMP_FROM_PARTS(DATE(CDHDR.UDATE,'YYYYMMDD'),TRY_TO_TIME(CDHDR.UTIME)) DESC) = 1 ), CHG_LOG_VBAP_BLK as ( SELECT CDHDR.OBJECTCLAS ,CDHDR.OBJECTID as Sales_Doc_Nbr ,CDPOS.TABKEY ,RIGHT(CDPOS.TABKEY,6) as Sales_Doc_Item_Nbr ,CDHDR.CHANGENR ,TRY_TO_DATE(CDHDR.UDATE,'YYYYMMDD') as Remove_Date ,TRY_TO_TIME(CDHDR.UTIME) as Remove_Time ,TIMESTAMP_FROM_PARTS(DATE(CDHDR.UDATE,'YYYYMMDD'),TRY_TO_TIME(CDHDR.UTIME)) as Remove_Time_Stamp ,CDHDR.TCODE ,CDHDR.USERNAME ,CDPOS.TABNAME ,CDPOS.FNAME ,CDPOS.CHNGIND ,CDPOS.VALUE_OLD ,CDPOS.VALUE_NEW FROM PUBLISH.CORE_CO_COMMON_CDS.V_CDHDR CDHDR INNER JOIN PUBLISH.CORE_CO_COMMON_CDS.V_CDPOS CDPOS ON CDHDR.OBJECTCLAS"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 375,
+    "end_block": 525,
+    "parent_block_id": "",
+    "text": ",TRY_TO_DATE(CDHDR.UDATE,'YYYYMMDD') as Remove_Date ,TRY_TO_TIME(CDHDR.UTIME) as Remove_Time ,TIMESTAMP_FROM_PARTS(DATE(CDHDR.UDATE,'YYYYMMDD'),TRY_TO_TIME(CDHDR.UTIME)) as Remove_Time_Stamp ,CDHDR.TCODE ,CDHDR.USERNAME ,CDPOS.TABNAME ,CDPOS.FNAME ,CDPOS.CHNGIND ,CDPOS.VALUE_OLD ,CDPOS.VALUE_NEW FROM PUBLISH.CORE_CO_COMMON_CDS.V_CDHDR CDHDR INNER JOIN PUBLISH.CORE_CO_COMMON_CDS.V_CDPOS CDPOS ON CDHDR.OBJECTCLAS = CDPOS.OBJECTCLAS AND CDHDR.OBJECTID = CDPOS.OBJECTID AND CDHDR.CHANGENR = CDPOS.CHANGENR WHERE CDHDR.OBJECTCLAS = 'VERKBELEG' AND CDPOS.TABNAME = 'VBAP' AND CDPOS.FNAME = 'FAKSP' AND CDPOS.VALUE_OLD between 'Z1' and 'ZY' AND CDPOS.VALUE_NEW = '' QUALIFY ROW_NUMBER() OVER (PARTITION BY CDHDR.OBJECTID,RIGHT(CDPOS.TABKEY,6) ORDER BY TIMESTAMP_FROM_PARTS(DATE(CDHDR.UDATE,'YYYYMMDD'),TRY_TO_TIME(CDHDR.UTIME)) DESC) = 1 ), CHANGE_LOG_REJ as ( SELECT CDHDR.OBJECTCLAS ,CDHDR.OBJECTID as Sales_Doc_Nbr ,CDPOS.TABKEY ,RIGHT(CDPOS.TABKEY,6) as Sales_Doc_Item_Nbr ,CDHDR.CHANGENR ,TRY_TO_DATE(CDHDR.UDATE,'YYYYMMDD') as Reject_Date ,TRY_TO_TIME(CDHDR.UTIME) as Reject_Time ,TIMESTAMP_FROM_PARTS(DATE(CDHDR.UDATE,'YYYYMMDD'),TRY_TO_TIME(CDHDR.UTIME)) as CLTIMESTAMP ,CDHDR.TCODE ,CDHDR.USERNAME ,CDPOS.TABNAME ,CDPOS.FNAME ,CDPOS.CHNGIND ,CDPOS.VALUE_OLD ,CDPOS.VALUE_NEW FROM PUBLISH.CORE_CO_COMMON_CDS.V_CDHDR CDHDR INNER JOIN PUBLISH.CORE_CO_COMMON_CDS.V_CDPOS CDPOS ON CDHDR.OBJECTCLAS = CDPOS.OBJECTCLAS AND CDHDR.OBJECTID = CDPOS.OBJECTID AND CDHDR.CHANGENR = CDPOS.CHANGENR WHERE CDHDR.OBJECTCLAS = 'VERKBELEG' AND CDPOS.TABNAME in ('VBAP') AND CDPOS.FNAME in ('ABGRU') AND CDPOS.VALUE_OLD = '' QUALIFY ROW_NUMBER() OVER (PARTITION BY CDHDR.OBJECTID,RIGHT(CDPOS.TABKEY,6) ORDER BY TIMESTAMP_FROM_PARTS(DATE(CDHDR.UDATE,'YYYYMMDD'),TRY_TO_TIME(CDHDR.UTIME)) DESC) = 1 ), BILLING_DOCS as ("
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 500,
+    "end_block": 650,
+    "parent_block_id": "",
+    "text": "('VBAP') AND CDPOS.FNAME in ('ABGRU') AND CDPOS.VALUE_OLD = '' QUALIFY ROW_NUMBER() OVER (PARTITION BY CDHDR.OBJECTID,RIGHT(CDPOS.TABKEY,6) ORDER BY TIMESTAMP_FROM_PARTS(DATE(CDHDR.UDATE,'YYYYMMDD'),TRY_TO_TIME(CDHDR.UTIME)) DESC) = 1 ), BILLING_DOCS as ( SELECT vbrp.mandt ,vbrp.vgbel ,vbrp.vgpos ,vbrp.vbeln ,vbrp.vgtyp ,vbrp.posnr ,VBRK.FKDAT ,VBRK.FKART ,VBRK.FKTYP ,VBRK.VBTYP ,VBRK.WAERK ,VBRK.RFBSK ,VBRK.KNUMV ,VBRK.NETWR as VBRK_NETWR ,VBRP.NETWR as VBRP_NETWR ,VBRP.NETWR_USD_DOC_DT_FIXED_SRFR ,VBRP.NETWR_USD_DOC_DT_DYNAMIC_SRFR as VBRP_NETWR_USD_SRFR ,TRY_TO_DATE(VBRP.ERDAT,'YYYYMMDD') as ERDAT ,VBRP.LLAND_AUFT ,VBRP.FKLMG ,VBRP.FKIMG ,VBRP.ERNAM ,TRY_TO_DATE(VBRP.PRSDT,'YYYYMMDD') as PRSDT ,vbrp.LOCAL_CURR FROM PUBLISH.CORE_CO_COMMON_CDS.V_VBRK vbrk INNER JOIN PUBLISH.CORE_CO_OM_CDS.V_VBRP vbrp ON vbrp.vbeln = vbrk.vbeln WHERE vbrk.vbtyp in ('M','O','P') AND vbrk.fksto <> 'X' and VBRK.FKART Not In ('ZIDV') ) SELECT 'S4' as Source_System ,Sales_Doc_Nbr ,Sales_Doc_Item_Nbr ,CONCAT(Sales_Doc_Nbr,Sales_Doc_Item_Nbr) as Sales_Doc_Nbr_Item_Concat ,Sales_Org_Cd ,Sales_Org_Name ,Sales_Doc_Category_Cd ,Sales_Doc_Row_Nbr ,Sales_Doc_Line_Row_Nbr ,Sales_Doc_Line_Del_Row_Nbr ,Sales_Doc_Type_Cd ,Sales_Doc_Type_Name ,Sales_Doc_Created_By ,Sales_Doc_Order_Reason_Cd ,Sales_Doc_Dist_Chan ,Record_Create_Date ,Sales_Doc_Create_Date ,Sales_Doc_Item_Create_Date ,Sales_Doc_Item_Create_Time ,Sales_Doc_Cust_PO_Ord_Type_Cd ,Sales_Doc_Item_Cust_PO_Ord_Type_Cd ,Sales_Doc_Cust_PO_Date ,case when Sales_Doc_Row_Nbr = 1 then Sales_Doc_Net_Value else 0 end as Sales_Doc_Net_Value ,Material_Nbr ,Material_Name ,EAN_UPC_Nbr ,Curr_Date ,Sales_Doc_Item_Work_Days_Open ,Sales_Doc_Item_Work_Days_Open_Category ,Conv_Factor_Numerator ,Conv_Factor_Denominator ,Base_Unit ,Sales_Unit ,Sales_Doc_Currency ,Sales_Doc_Item_Category_Cd ,Sales_Doc_Item_Created_By ,Sales_Doc_Item_Prec_Doc_Nbr ,Sales_Doc_Item_Prec_Doc_Item ,Sales_Doc_Item_Ship_Point ,Sales_Doc_Item_Route ,Sales_Doc_Unlimited_Tolerance ,Sales_Doc_Item_Over_Delv_Tol_Pct ,Sales_Doc_Item_Under_Delv_Tol_Pct ,case when Sales_Doc_Line_Row_Nbr = 1 then"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 625,
+    "end_block": 775,
+    "parent_block_id": "",
+    "text": ",Material_Name ,EAN_UPC_Nbr ,Curr_Date ,Sales_Doc_Item_Work_Days_Open ,Sales_Doc_Item_Work_Days_Open_Category ,Conv_Factor_Numerator ,Conv_Factor_Denominator ,Base_Unit ,Sales_Unit ,Sales_Doc_Currency ,Sales_Doc_Item_Category_Cd ,Sales_Doc_Item_Created_By ,Sales_Doc_Item_Prec_Doc_Nbr ,Sales_Doc_Item_Prec_Doc_Item ,Sales_Doc_Item_Ship_Point ,Sales_Doc_Item_Route ,Sales_Doc_Unlimited_Tolerance ,Sales_Doc_Item_Over_Delv_Tol_Pct ,Sales_Doc_Item_Under_Delv_Tol_Pct ,case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Item_Net_Value else 0 end as Sales_Doc_Item_Net_Value ,case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Item_Net_Value_USD_SRFR else 0 end as Sales_Doc_Item_Net_Value_USD_SRFR ,case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Item_Delivery_Count else 0 end as Sales_Doc_Item_Delivery_Count ,case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Item_Goods_Issued_Value_Sum else 0 end as Sales_Doc_Item_Goods_Issued_Value_Sum ,case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR else 0 end as Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR ,case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Item_Goods_Issued_Qty_BUOM_Sum else 0 end as Sales_Doc_Item_Goods_Issued_Qty_BUOM_Sum ,case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Item_Goods_Issued_Qty_SUOM_Sum else 0 end as Sales_Doc_Item_Goods_Issued_Qty_SUOM_Sum ,case when Sales_Doc_Line_Row_Nbr = 1 and Sales_Doc_Item_Open_Ind = 'Y' then (Sales_Doc_Item_Net_Value - Sales_Doc_Item_Goods_Issued_Value_Sum) else 0 end as Sales_Doc_Item_Open_Net_Value ,case when Sales_Doc_Line_Row_Nbr = 1 and Sales_Doc_Item_Open_Ind = 'Y' then (Sales_Doc_Item_Net_Value_USD_SRFR - Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR) else 0 end as Sales_Doc_Item_Open_Net_Value_USD_SRFR , CASE WHEN Sales_Doc_Line_Row_Nbr = 1 and backlog_ind = 'Y' and"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 750,
+    "end_block": 900,
+    "parent_block_id": "",
+    "text": "1 and Sales_Doc_Item_Open_Ind = 'Y' then (Sales_Doc_Item_Net_Value_USD_SRFR - Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR) else 0 end as Sales_Doc_Item_Open_Net_Value_USD_SRFR , CASE WHEN Sales_Doc_Line_Row_Nbr = 1 and backlog_ind = 'Y' and SNAKE_SCND_SD_NBR IS NULL then (Sales_Doc_Item_Net_Value - Sales_Doc_Item_Goods_Issued_Value_Sum) when Sales_Doc_Line_Row_Nbr = 1 and backlog_ind = 'Y' and SNAKE_SCND_SD_NBR IS NOT NULL THEN (case when SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE=0 or SDM_SCND_SALES_DOC_ITEM_NET_VALUE =0 then SALES_DOC_ITEM_NET_VALUE else (SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE /SDM_SCND_SALES_DOC_ITEM_NET_VALUE) * SALES_DOC_ITEM_NET_VALUE end) else 0 END as Sales_Doc_Item_Backlog_Net_Value , CASE WHEN Sales_Doc_Line_Row_Nbr = 1 and backlog_ind = 'Y' and SNAKE_SCND_SD_NBR IS NULL then (Sales_Doc_Item_Net_Value_USD_SRFR - Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR) when Sales_Doc_Line_Row_Nbr = 1 and backlog_ind = 'Y' and SNAKE_SCND_SD_NBR IS NOT NULL THEN (case when SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE_USD_SRFR=0 or SDM_SCND_SALES_DOC_ITEM_NET_VALUE_USD_SRFR =0 then SALES_DOC_ITEM_NET_VALUE_USD_SRFR else (SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE_USD_SRFR /SDM_SCND_SALES_DOC_ITEM_NET_VALUE_USD_SRFR) * SALES_DOC_ITEM_NET_VALUE_USD_SRFR end) else 0 END as Sales_Doc_Item_Backlog_Net_Value_USD_SRFR , CASE WHEN Sales_Doc_Line_Row_Nbr = 1 and backorder_ind = 'Y' and SNAKE_SCND_SD_NBR IS NULL then (Sales_Doc_Item_Net_Value - Sales_Doc_Item_Goods_Issued_Value_Sum) when Sales_Doc_Line_Row_Nbr = 1 and backorder_ind = 'Y' and SNAKE_SCND_SD_NBR IS NOT NULL THEN (case when"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 875,
+    "end_block": 1025,
+    "parent_block_id": "",
+    "text": "'Y' and SNAKE_SCND_SD_NBR IS NULL then (Sales_Doc_Item_Net_Value - Sales_Doc_Item_Goods_Issued_Value_Sum) when Sales_Doc_Line_Row_Nbr = 1 and backorder_ind = 'Y' and SNAKE_SCND_SD_NBR IS NOT NULL THEN (case when SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE=0 or SDM_SCND_SALES_DOC_ITEM_NET_VALUE =0 then SALES_DOC_ITEM_NET_VALUE else DIV0NULL(SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE ,SDM_SCND_SALES_DOC_ITEM_NET_VALUE) * SALES_DOC_ITEM_NET_VALUE end) else 0 END as Sales_Doc_Item_Backorder_Net_Value , CASE WHEN Sales_Doc_Line_Row_Nbr = 1 and backorder_ind = 'Y' and SNAKE_SCND_SD_NBR IS NULL then (Sales_Doc_Item_Net_Value_USD_SRFR - Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR) when Sales_Doc_Line_Row_Nbr = 1 and backorder_ind = 'Y' and SNAKE_SCND_SD_NBR IS NOT NULL THEN (case when SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE_USD_SRFR=0 or SDM_SCND_SALES_DOC_ITEM_NET_VALUE_USD_SRFR =0 then SALES_DOC_ITEM_NET_VALUE_USD_SRFR else DIV0NULL(SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE_USD_SRFR ,SDM_SCND_SALES_DOC_ITEM_NET_VALUE_USD_SRFR) * SALES_DOC_ITEM_NET_VALUE_USD_SRFR end) else 0 END as Sales_Doc_Item_BackOrder_Net_Value_USD_SRFR ,case when Backlog_Ind = 'Y' and BackOrder_Ind = 'N' then 'Backlog W/O Backorder' when Backorder_Ind = 'Y' then 'Backorder' when Backlog_Ind = 'Y' then 'Backlog' when Sales_Doc_Item_Open_Ind = 'Y' then 'Open Not Late' else 'Closed' end as Backlog_Group ,case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Item_Ord_Qty_Sales_Unit else 0 end as Sales_Doc_Item_Ord_Qty_Sales_Unit ,case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Item_Ord_Qty_Base_Unit"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 1000,
+    "end_block": 1150,
+    "parent_block_id": "",
+    "text": "Late' else 'Closed' end as Backlog_Group ,case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Item_Ord_Qty_Sales_Unit else 0 end as Sales_Doc_Item_Ord_Qty_Sales_Unit ,case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Item_Ord_Qty_Base_Unit else 0 end as Sales_Doc_Item_Ord_Qty_Base_Unit ,case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Sched_Line_Conf_Qty_Sales_Unit else 0 end as Sales_Doc_Sched_Line_Conf_Qty_Sales_Unit ,case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Sched_Line_Conf_Qty_Base_Unit else 0 end as Sales_Doc_Sched_Line_Conf_Qty_Base_Unit ,case when Sales_Doc_Line_Row_Nbr = 1 and Sales_Doc_Item_Open_Ind = 'Y' then (Sales_Doc_Item_Ord_Qty_Sales_Unit - Sales_Doc_Item_Goods_Issued_Qty_SUOM_Sum) else 0 end as Sales_Doc_Item_Open_Ord_Qty_Sales_Unit ,case when Sales_Doc_Line_Row_Nbr = 1 and Sales_Doc_Item_Open_Ind = 'Y' then (Sales_Doc_Item_Ord_Qty_Base_Unit - Sales_Doc_Item_Goods_Issued_Qty_BUOM_Sum) else 0 end as Sales_Doc_Item_Open_Ord_Qty_Base_Unit ,Sales_Doc_Item_Prec_Doc_Type_Cd ,Sales_Doc_Shipping_Plant ,Sales_Doc_Shipping_Plant_Name ,Pick_Pack_Days ,Pick_Pack_Hours ,MRP_Controller ,MRP_Controller_Email ,Ship_To_Nbr ,Ship_To_Name ,Ship_To_City ,Ship_To_Pstl_Code ,Ship_To_Region ,Ship_To_Country ,Ship_To_Country_Text ,Sold_To_Nbr ,Sold_To_Name ,Sold_To_Country ,Sold_To_City ,Sold_To_Pstl_Code ,Sold_To_Acct_Grp_Cd ,Bill_To_Nbr ,Bill_To_Name ,Payer_Nbr ,Payer_Name ,Pricing_Partner_Nbr ,Pricing_Partner_Name ,CSR_Nbr ,CSR_User_Pin ,CSR_Name ,Supv_Name ,Supv_User_Pin ,Supv_Prsn_ID ,Ult_Dest_Ctry_Cd ,Sales_Doc_Item_Reject_Reason_Cd ,Sales_Doc_Item_Rejection_Status ,Sales_Doc_Item_Reject_Ind ,Sales_Doc_Item_Reject_Date ,Sales_Doc_Sched_Line_Delivery_Block ,Sales_Doc_Billing_Block ,Sales_Doc_Item_Billing_Block ,Sales_Doc_Delivery_Block ,Material_Sales_Blocked_Ind ,Sales_Doc_Overall_Status ,Sales_Doc_Item_Overall_Status ,Sales_Doc_Incompletion_Status ,Sales_Doc_Total_Incompletion_Status ,Sales_Doc_Overall_Credit_Status ,Sales_Doc_Item_Incompletion_Status_Delivery ,Sales_Doc_Item_Incompletion_Status ,Sales_Doc_Item_Delivery_Status ,Sales_Doc_Item_Overall_Delivery_Status ,Delivery_Doc_Billing_Status ,Delivery_Doc_Billing_Block ,Sales_Doc_Item_Billing_Block_Status ,Sales_Doc_Item_Billing_Status ,GTS_Embargo_Status ,GTS_Screening_Status ,GTS_Legal_Control_Status ,GTS_Legal_Control_License ,Material_Sales_Status"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 1125,
+    "end_block": 1275,
+    "parent_block_id": "",
+    "text": ",Sales_Doc_Item_Reject_Ind ,Sales_Doc_Item_Reject_Date ,Sales_Doc_Sched_Line_Delivery_Block ,Sales_Doc_Billing_Block ,Sales_Doc_Item_Billing_Block ,Sales_Doc_Delivery_Block ,Material_Sales_Blocked_Ind ,Sales_Doc_Overall_Status ,Sales_Doc_Item_Overall_Status ,Sales_Doc_Incompletion_Status ,Sales_Doc_Total_Incompletion_Status ,Sales_Doc_Overall_Credit_Status ,Sales_Doc_Item_Incompletion_Status_Delivery ,Sales_Doc_Item_Incompletion_Status ,Sales_Doc_Item_Delivery_Status ,Sales_Doc_Item_Overall_Delivery_Status ,Delivery_Doc_Billing_Status ,Delivery_Doc_Billing_Block ,Sales_Doc_Item_Billing_Block_Status ,Sales_Doc_Item_Billing_Status ,GTS_Embargo_Status ,GTS_Screening_Status ,GTS_Legal_Control_Status ,GTS_Legal_Control_License ,Material_Sales_Status ,Material_Plant_Status ,Material_Cross_Plant_Status ,Global_Sales_Cd ,Global_Sales_Cd_Name ,Prod_Group_2_Cd ,Prod_Group_2_Name ,Prod_Group_1_Cd ,Prod_Group_1_Name ,Bus_Unit_Cd ,Bus_Unit_Name ,Profit_Center_Cd ,Profit_Center_Name ,Division_Cd ,Division_Name ,Company_Cd ,Company_Cd_Name ,Company_Cd_Area ,Sales_Org_Country_Cd ,Sales_Doc_Item_Open_Ind ,Sales_Doc_Item_Open_Category ,Payment_Terms ,Sales_District_Cd ,Blocked_Reason ,case when substr(Blocked_Reason,1,1) = '1' then '1.Invalid Material' when substr(Blocked_Reason,1,1) = '2' then '2.Temporary Rejection' when substr(Blocked_Reason,1,1) = '3' then '3.Delivery Block' when substr(Blocked_Reason,1,1) = '4' then '4.Incompletions' when substr(Blocked_Reason,1,1) = '5' then '5.GTS Block' when substr(Blocked_Reason,1,1) = '6' then '6.Credit Block' when substr(Blocked_Reason,1,1) = '7' then '7.Billing Block' when substr(Blocked_Reason,1,1) = '8' then '8.Not Blocked' else '9.NO REASON DETERMINED' end as Blocked_Reason_Category ,case when Blocked_Reason not like '%Not Blocked' then 'Blocked' when coalesce(DELIVERY_DOC_ITEM_QTY_SALES_UNIT,0) > 0 and DELIVERY_DOC_ACTUAL_GOODS_ISSUED_DATE is null then 'Delivery Created Not Shipped' when Blocked_Reason like '%Not Blocked' then 'Not Blocked' else 'Not Determined' end as Block_Type ,Current_Planned_Goods_Issued_Date ,COALESCE(SDM_SCND_CURRENT_EXPECTED_DELIVERY_DATE ,Current_Expected_Delivery_Date)"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 1250,
+    "end_block": 1400,
+    "parent_block_id": "",
+    "text": "DELIVERY_DOC_ACTUAL_GOODS_ISSUED_DATE is null then 'Delivery Created Not Shipped' when Blocked_Reason like '%Not Blocked' then 'Not Blocked' else 'Not Determined' end as Block_Type ,Current_Planned_Goods_Issued_Date ,COALESCE(SDM_SCND_CURRENT_EXPECTED_DELIVERY_DATE ,Current_Expected_Delivery_Date) as Current_Expected_Delivery_Date ,Current_Matl_Avlb_Date ,Delivery_Doc_Planned_Goods_Issued_Date ,Delivery_Doc_Actual_Goods_Issued_Date ,Delivery_Doc_Date ,Delivery_Doc_Proof_of_Delivery ,DATEDIFF(DD,Delivery_Doc_Date,CURRENT_DATE) as Days_Aged_from_Delivery_Doc_Date ,COALESCE(SDM_SCND_PLANNED_GI_MEASURE_DATE,IFF(coalesce(Delivery_Doc_Item_Qty_Base_Unit,0) > 0 and coalesce(Delivery_Doc_Goods_Issued_Qty_Base_Unit,0) = 0 , Delivery_Doc_Planned_Goods_Issued_Date, CURRENT_PLANNED_GOODS_ISSUED_DATE)) as Planned_GI_Measure_Date ,DATEDIFF(DD,CURRENT_DATE, IFF(coalesce(Delivery_Doc_Item_Qty_Base_Unit,0) > 0 and coalesce(Delivery_Doc_Goods_Issued_Qty_Base_Unit,0) = 0 , Delivery_Doc_Planned_Goods_Issued_Date, CURRENT_PLANNED_GOODS_ISSUED_DATE)) as Days_Until_Planned_GI ,Delivery_Doc_Planned_Customer_Billing_Date ,Delivery_Doc_Nbr ,Delivery_Doc_Item_Nbr ,case when Sales_Doc_Line_Del_Row_Nbr = 1 then Delivery_Doc_Item_Qty_Base_Unit else 0 end as Delivery_Doc_Item_Qty_Base_Unit ,case when Sales_Doc_Line_Del_Row_Nbr = 1 then Delivery_Doc_Item_Qty_Sales_Unit else 0 end as Delivery_Doc_Item_Qty_Sales_Unit ,Delivery_Doc_Item_Net_Weight ,Delivery_Doc_Item_Gross_Weight ,Delivery_Doc_Item_Qty_Not_Relevant_BUOM ,Delivery_Doc_Category ,case when Sales_Doc_Line_Del_Row_Nbr = 1 then Delivery_Doc_Goods_Issued_Net_Value else 0 end as Delivery_Doc_Goods_Issued_Net_Value ,case when Sales_Doc_Line_Del_Row_Nbr = 1 then Delivery_Doc_Goods_Issued_Net_Value_USD_SRFR else 0 end as Delivery_Doc_Goods_Issued_Net_Value_USD_SRFR ,case when Sales_Doc_Line_Del_Row_Nbr = 1 then Delivery_Doc_Goods_Issued_Qty_Base_Unit else 0 end as Delivery_Doc_Goods_Issued_Qty_Base_Unit ,case when Sales_Doc_Line_Del_Row_Nbr = 1 then Delivery_Doc_Goods_Issued_Qty_Sales_Unit else 0 end as Delivery_Doc_Goods_Issued_Qty_Sales_Unit ,Billing_Doc_Date ,Billing_Doc_Nbr ,Billing_Doc_Net_Value ,Billing_Doc_Bill_Type ,Billing_Doc_Bill_Category ,Billing_Doc_Currency ,Billing_Doc_Accounting_Posting_Status ,Billing_Doc_Item_Nbr ,Billing_Doc_Item_Net_Value ,Billing_Doc_Item_Net_Value_USD_SRFR ,Billing_Doc_Item_Qty_Base_Unit"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 1375,
+    "end_block": 1525,
+    "parent_block_id": "",
+    "text": "as Delivery_Doc_Goods_Issued_Qty_Base_Unit ,case when Sales_Doc_Line_Del_Row_Nbr = 1 then Delivery_Doc_Goods_Issued_Qty_Sales_Unit else 0 end as Delivery_Doc_Goods_Issued_Qty_Sales_Unit ,Billing_Doc_Date ,Billing_Doc_Nbr ,Billing_Doc_Net_Value ,Billing_Doc_Bill_Type ,Billing_Doc_Bill_Category ,Billing_Doc_Currency ,Billing_Doc_Accounting_Posting_Status ,Billing_Doc_Item_Nbr ,Billing_Doc_Item_Net_Value ,Billing_Doc_Item_Net_Value_USD_SRFR ,Billing_Doc_Item_Qty_Base_Unit ,Billing_Doc_Item_Qty_Sales_Unit ,Billing_Doc_Item_Dest_Country_Cd ,Price_Condition_Inactive ,Billing_Doc_Item_Price_Date ,ZMAN_Auto_Flag ,ZMAN_Cond_Flag ,ZMAN_Manual_Amount ,Last_Billing_Block_Removed_By ,Last_Billing_Block_Removed_By_User_name ,Last_Billing_Block_Removed_Date ,Last_Billing_Block_Removed_Cd ,Purch_Order_Nbr ,Purch_Order_Item_Nbr ,Purch_Order_Our_Ref ,Purch_Order_Conf_Date_AB_Max ,Purch_Order_Conf_Date_LA_Max ,CASE when Billing_Doc_Accounting_Posting_Status in ('C','D','E') then 'Billing Completed' when Delivery_Doc_Billing_Block in ('ZF','ZY') then 'Flash Block on Delivery' when Sales_Doc_Item_Billing_Block='Z1' then 'SD Item Billing Block - Z1 - Check Credit Memo' when Sales_Doc_Item_Billing_Block='Z2' then 'SD Item Billing Block - Z2 - Return Credit Memo' when Sales_Doc_Item_Billing_Block='Z3' then 'SD Item Billing Block - Z3 - Incompl.Pricing Cond.' when Sales_Doc_Item_Billing_Block='Z4' then 'SD Item Billing Block - Z4 - Check Terms or Paymt' when Sales_Doc_Item_Billing_Block='Z5' then 'SD Item Billing Block - Z5 - Customer Block' when Sales_Doc_Item_Billing_Block='Z6' then 'SD Item Billing Block - Z6 - Billing Plan Block' when Sales_Doc_Item_Billing_Block='Z7' then 'SD Item Billing Block - Z7 - 3M Pmt Authorization' when Sales_Doc_Item_Billing_Block='Z8'"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 1500,
+    "end_block": 1650,
+    "parent_block_id": "",
+    "text": "'SD Item Billing Block - Z6 - Billing Plan Block' when Sales_Doc_Item_Billing_Block='Z7' then 'SD Item Billing Block - Z7 - 3M Pmt Authorization' when Sales_Doc_Item_Billing_Block='Z8' then 'SD Item Billing Block - Z8 - Approval Required' when Sales_Doc_Item_Billing_Block='Z9' then 'SD Item Billing Block - Z9 - FORS orders block' when Sales_Doc_Item_Billing_Block='ZD' then 'SD Item Billing Block - ZD - Approval Denied' when Sales_Doc_Item_Billing_Block='ZF' then 'SD Item Billing Block - ZF - Flash Partner Block' when Sales_Doc_Item_Billing_Block='ZP' then 'SD Item Billing Block - ZP - POD Completion' when Sales_Doc_Item_Billing_Block='ZW' then 'SD Item Billing Block - ZW - Workflow Blocked' when Sales_Doc_Item_Billing_Block='ZZ' then 'SD Item Billing Block - ZZ - Collective Bill - TW' when Sales_Doc_Billing_Block='Z1' then 'SD Hdr Billing Block - Z1 - Check Credit Memo' when Sales_Doc_Billing_Block='Z2' then 'SD Hdr Billing Block - Z2 - Return Credit Memo' when Sales_Doc_Billing_Block='Z3' then 'SD Hdr Billing Block - Z3 - Incompl.Pricing Cond.' when"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 1625,
+    "end_block": 1775,
+    "parent_block_id": "",
+    "text": "Sales_Doc_Billing_Block='Z2' then 'SD Hdr Billing Block - Z2 - Return Credit Memo' when Sales_Doc_Billing_Block='Z3' then 'SD Hdr Billing Block - Z3 - Incompl.Pricing Cond.' when Sales_Doc_Billing_Block='Z4' then 'SD Hdr Billing Block - Z4 - Check Terms or Paymt' when Sales_Doc_Billing_Block='Z5' then 'SD Hdr Billing Block - Z5 - Customer Block' when Sales_Doc_Billing_Block='Z6' then 'SD Hdr Billing Block - Z6 - Billing Plan Block' when Sales_Doc_Billing_Block='Z7' then 'SD Hdr Billing Block - Z7 - 3M Pmt Authorization' when Sales_Doc_Billing_Block='Z8' then 'SD Hdr Billing Block - Z8 - Approval Required' when Sales_Doc_Billing_Block='Z9' then 'SD Hdr Billing Block - Z9 - FORS orders block' when Sales_Doc_Billing_Block='ZD' then 'SD Hdr Billing Block - ZD - Approval Denied' when Sales_Doc_Billing_Block='ZF' then 'SD Hdr Billing Block - ZF - Flash Partner Block' when Sales_Doc_Billing_Block='ZP' then 'SD Hdr Billing Block - ZP - POD Completion' when Sales_Doc_Billing_Block='ZW' then 'SD Hdr Billing Block - ZW - Workflow Blocked'"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 1750,
+    "end_block": 1900,
+    "parent_block_id": "",
+    "text": "Block' when Sales_Doc_Billing_Block='ZP' then 'SD Hdr Billing Block - ZP - POD Completion' when Sales_Doc_Billing_Block='ZW' then 'SD Hdr Billing Block - ZW - Workflow Blocked' when Sales_Doc_Billing_Block='ZZ' then 'SD Hdr Billing Block - ZZ - Collective Bill - TW' when Delivery_Doc_Actual_Goods_Issued_Date = CURRENT_DATE AND Delivery_Doc_Planned_Customer_Billing_Date = CURRENT_DATE Then 'To be billed during the night' when Delivery_Doc_Actual_Goods_Issued_Date = CURRENT_DATE AND Delivery_Doc_Planned_Customer_Billing_Date > CURRENT_DATE Then 'Planned on Billing Calendar - Shipped Today' when(Delivery_Doc_Actual_Goods_Issued_Date is not null AND Delivery_Doc_Planned_Customer_Billing_Date < CURRENT_DATE) Then 'Shipped not Billed - Others' ELSE 'To be checked' END AS Shipped_Not_Billed_Reason ,CASE WHEN Delivery_Doc_Actual_Goods_Issued_Date IS NOT NULL AND Billing_Doc_Nbr IS NULL AND Delivery_Doc_Billing_Status IN ('A','B') AND Sales_Doc_Category_Cd ='C' THEN 'Shipped Not Billed' WHEN Billing_Doc_Nbr IS NOT NULL AND Billing_Doc_Accounting_Posting_Status not in ('C', 'D', 'E') THEN 'Billed Not Posted' WHEN SUBSTR(TO_VARCHAR(Delivery_Doc_Actual_Goods_Issued_Date),1,7) <> SUBSTR(TO_VARCHAR(Billing_Doc_Date),1,7) AND Sales_Doc_Category_Cd ='C' AND Billing_Doc_Nbr IS NOT NULL AND Billing_Doc_Accounting_Posting_Status in ('C','D','E') THEN 'Billed in Diff Period than"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 1875,
+    "end_block": 2025,
+    "parent_block_id": "",
+    "text": "'Billed Not Posted' WHEN SUBSTR(TO_VARCHAR(Delivery_Doc_Actual_Goods_Issued_Date),1,7) <> SUBSTR(TO_VARCHAR(Billing_Doc_Date),1,7) AND Sales_Doc_Category_Cd ='C' AND Billing_Doc_Nbr IS NOT NULL AND Billing_Doc_Accounting_Posting_Status in ('C','D','E') THEN 'Billed in Diff Period than PGI' ELSE 'REC015 Compliant' END as SOX_REC015_Category ,CASE WHEN Sales_Doc_Category_Cd = 'L' AND Billing_Doc_Accounting_Posting_Status in ('C','D','E') THEN 'Y' ELSE 'N' END as SOX_REC057_Debit_Memo_Ind ,CASE WHEN Sales_Doc_Category_Cd in ('K','H') AND Sales_Doc_Created_By = Last_Billing_Block_Removed_By AND Sales_Doc_Billing_Block = '' THEN 'Y' ELSE 'N' END as SOX_REC274_Returns_Credits_SOD_Ind ,CASE WHEN Sales_Doc_Category_Cd = 'C' AND ZMAN_Cond_Flag = 'Y' AND Price_Condition_Inactive = '' THEN 'Y' ELSE 'N' END AS SOX_REC135_Manually_Priced_Ind ,OTIF_Date_Original ,OTIF_Date_Revised ,OTIF_Measure_Date ,case when OTIF_Measure_Date < CURRENT_DATE then '1 - OTIF in the Past' when OTIF_Measure_Date < Planned_GI_Measure_Date then '2 - Not Yet Late but OTIF Date < Planned GI Date' when OTIF_Measure_Date >= Planned_GI_Measure_Date then '3 - Should be On Time - OTIF Date >= Planned GI Date' else 'Not Determined' end as OTIF_Early_Warning ,MAD_Date_Original ,Last_Prod_Avlb_Check_Date ,Prod_Avail_Ind ,BackLog_Ind ,BackOrder_Ind ,Sales_Doc_Group"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 2000,
+    "end_block": 2150,
+    "parent_block_id": "",
+    "text": "'3 - Should be On Time - OTIF Date >= Planned GI Date' else 'Not Determined' end as OTIF_Early_Warning ,MAD_Date_Original ,Last_Prod_Avlb_Check_Date ,Prod_Avail_Ind ,BackLog_Ind ,BackOrder_Ind ,Sales_Doc_Group ,CSR_HDR_Z002_Text ,CSR_Line_Z020_Text ,CSR_Line_ZMAN_Text ,Sales_Doc_Ship_Compl_Ind ,Plan_Strat_Group ,Plant_Strat_Group_Text ,Sales_Doc_Cust_PO_Nbr ,Billing_Doc_Item_Created_By ,Sales_Rep_Nbr ,Sales_Rep_Name ,Sales_Doc_Item_Tgt_Qty_Sales_Unit ,Sales_Doc_Item_Tgt_Qty_Base_Unit ,Delivery_Doc_Volume ,Delivery_Doc_Volume_Unit ,Delivery_Doc_Item_Net_Value ,Delivery_Doc_Item_Net_Value_USD_SRFR ,DATEDIFF(DD,OTIF_Measure_Date,CURRENT_DATE) as Days_Aged_from_OTIF_Date ,Material_Entered ,Sales_Doc_Cust_PO_Ord_Type_Text ,Sales_Doc_Item_CSR_Open_Ind ,Sales_Doc_Item_CSR_Open_Category ,Sales_Doc_Item_Net_Price ,Material_Sales_LCL_Cat_ID ,Cust_CSR_Acct_Group ,Cust_CSR_Acct_Name ,Company_Cd_Super_Region ,Company_Cd_Region ,Sales_Doc_Order_Reason_Text ,Block_Dlv_Invalid_Matno_Ind ,Block_Dlv_Temp_Reject_A5_Ind ,Block_Dlv_Temp_Reject_Other_Ind ,Block_Dlv_80_Obsl_Plant_Ind ,Block_Dlv_87_Adv_Pay_Hold_Ind ,Block_Dlv_88_Cutover_Ind ,Block_Dlv_89_Retrieve_Alert_Ind ,Block_Dlv_91_Cust_Request_Ind ,Block_Dlv_92_CSR_Hold_Ind ,Block_Dlv_93_Price_Ind ,Block_Dlv_94_Quality_Issue_Ind ,Block_Dlv_95_EDI_NGG_Ind ,Block_Dlv_96_Adv_Pay_Rqd_Ind ,Block_Dlv_97_Nil_Pick_Ind ,Block_Dlv_99_CSR_Review_Ind ,Block_Dlv_99_Assoc_with_Delivery_Ind ,Block_Incompletion_Ind ,Block_GTS_Ind ,Block_Credit_Hold_Ind ,Block_Billing_Ind ,Block_Dlv_Other_Ind ,Material_Sales_Delv_Plant ,Last_Delivery_Block_Removed_By ,Last_Delivery_Block_Removed_By_User_name ,CUST_ACCT_GROUP ,Sales_Doc_Inco_Terms_1 ,Sales_Doc_Inco_Terms_2 ,Consol_Partner ,Days_Until_OTIF ,CASE WHEN DATEDIFF(DAY, CURR_DATE, OTIF_Measure_Date) >= 2 THEN 'Before OTIF Date - 2 or More Days' WHEN DATEDIFF(DAY, CURR_DATE, OTIF_Measure_Date) = 1 THEN 'Before OTIF Date - 1 Day' WHEN DATEDIFF(DAY, CURR_DATE, OTIF_Measure_Date) = 0 THEN 'OTIF Date = Today' WHEN DATEDIFF(DAY, CURR_DATE, OTIF_Measure_Date) <= -1 THEN 'Past OTIF Date' ELSE '' END AS OTIF_Early_Late_Category , CASE WHEN OTIF_MEASURE_DATE = '0001-01-02' or OTIF_Measure_Date is Null THEN"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 2125,
+    "end_block": 2275,
+    "parent_block_id": "",
+    "text": "DATEDIFF(DAY, CURR_DATE, OTIF_Measure_Date) <= -1 THEN 'Past OTIF Date' ELSE '' END AS OTIF_Early_Late_Category , CASE WHEN OTIF_MEASURE_DATE = '0001-01-02' or OTIF_Measure_Date is Null THEN 'Invalid OTIF' WHEN Days_Aged_From_OTIF_Date < 0 then '-999-000' WHEN Days_Aged_From_OTIF_Date BETWEEN 0 AND 13 THEN '000-013' WHEN Days_Aged_From_OTIF_Date BETWEEN 14 AND 27 THEN '014-027' WHEN Days_Aged_From_OTIF_Date BETWEEN 28 AND 41 THEN '028-041' WHEN Days_Aged_From_OTIF_Date BETWEEN 42 AND 55 THEN '042-055' WHEN Days_Aged_From_OTIF_Date BETWEEN 56 AND 69 THEN '056-069' WHEN Days_Aged_From_OTIF_Date BETWEEN 70 AND 83 THEN '070-083' WHEN Days_Aged_From_OTIF_Date BETWEEN 84 AND 97 THEN '084-097' WHEN Days_Aged_From_OTIF_Date BETWEEN 98 AND 111 THEN '098-111' WHEN Days_Aged_From_OTIF_Date BETWEEN 112 AND 125 THEN '112-125' WHEN Days_Aged_From_OTIF_Date BETWEEN 126 AND 140 THEN '126-140' WHEN Days_Aged_From_OTIF_Date > 140 THEN '140+' ELSE 'Unresolvable' END AS Days_Late_Clusters ,NULL as Days_Late_Clusters_Order ,Material_Description_ARKTX ,Credit_Hold_Removed_Date ,Sales_Doc_Billing_Block_Text ,Sales_Doc_Item_Billing_Block_Text ,Sales_Doc_Delivery_Block_Text ,Sales_Doc_Sched_Line_Delivery_Block_Text ,Billing_Doc_Item_Date ,Sales_Doc_Item_Contract_Sales_Nbr ,Customer_Material_Nbr ,Delivery_Doc_Billing_Block_Text ,Delivery_Doc_Item_Billing_Block_Text ,Flash_Ind ,Snake_Scnd_SD_Nbr ,Snake_SD_Item_Nbr ,Sales_Doc_Item_Delivery_Priority ,COMPANY_CD_COUNTRY_NAME ,DIV0NULL((case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Item_Net_Value_USD_SRFR"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 2250,
+    "end_block": 2400,
+    "parent_block_id": "",
+    "text": "as Days_Late_Clusters_Order ,Material_Description_ARKTX ,Credit_Hold_Removed_Date ,Sales_Doc_Billing_Block_Text ,Sales_Doc_Item_Billing_Block_Text ,Sales_Doc_Delivery_Block_Text ,Sales_Doc_Sched_Line_Delivery_Block_Text ,Billing_Doc_Item_Date ,Sales_Doc_Item_Contract_Sales_Nbr ,Customer_Material_Nbr ,Delivery_Doc_Billing_Block_Text ,Delivery_Doc_Item_Billing_Block_Text ,Flash_Ind ,Snake_Scnd_SD_Nbr ,Snake_SD_Item_Nbr ,Sales_Doc_Item_Delivery_Priority ,COMPANY_CD_COUNTRY_NAME ,DIV0NULL((case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Item_Net_Value_USD_SRFR else 0 end ),(case when Sales_Doc_Line_Row_Nbr = 1 then Sales_Doc_Item_Net_Value else 0 end )) * ZMAN_Manual_Amount as ZMAN_Manual_Amount_USD_SRFR ,sales_doc_item_net_value_loc_srfr ,sales_doc_item_loc_curr ,billing_doc_item_net_value_loc_srfr ,delivery_doc_item_net_value_loc_srfr ,Phase_In_Material_Nbr ,Phase_Out_Reason_Text ,Billing_Doc_Doc_Category ,Billing_Doc_Price_Cond_Nbr ,Material_Type_Cd ,Sales_Doc_Item_Storage_Loc ,Sales_Doc_Ship_Cond ,Delivery_Doc_Ship_Cond ,Interim_Sales_Order_Ind ,Interim_ZINT_Ind ,null as Sales_District_Text ,Sales_Doc_Ship_Cond_Text ,Delivery_Doc_Ship_Cond_Text ,Cust_Acct_Group_Text ,PO_Req_Nbr ,SCND_SD_Delivery_Doc_Actual_Goods_Issued_Date ,SCND_SD_Delivery_Doc_Billing_Status ,SDM_SCND_BLOCKED_REASON ,SCND_SDM_SALES_DOC_SHIPPING_PLANT ,SDM_SCND_SALES_DOC_SHIPPING_PLANT_NAME ,SDM_SCND_SALES_ORG_CD ,SDM_SCND_SALES_ORG_NAME ,LAST_UPDATED_TIMESTAMP ,Sales_Doc_Created_By_Name ,Delivery_Doc_Goods_Move_Status ,Sales_Doc_Inco_Terms_1_TEXT ,Sales_Doc_Inco_Terms_2_TEXT ,NULL AS COMS_Material_Nbr ,NULL AS COMS_Doc_Nbr ,NULL AS COMS_Doc_Item_Nbr , Plant_Type , Plant_Type_desc ,plant_area ,Plant_Country_Name , Plant_Region , Plant_Super_Area_CD ,Plant_Super_Area ,Plant_Super_Region_CD , Plant_Super_Region ,ULTIMATE_SUPPLY_LOCATION_CD ,ULTIMATE_SUPPLY_LOCATION_DS ,PRIMARY_SUPPLY_LOCATION_CD ,PRIMARY_SUPPLY_LOCATION_DS ,MRP_Controller_Desc ,Sales_Doc_Cust_Req_Del_Date ,Customer_Ind ,ORIG_SDM_SALES_DOC_ITEM_GOODS_ISSUED_QTY_BUOM_SUM ,ORIG_SDM_SALES_DOC_ITEM_GOODS_ISSUED_QTY_SUOM_SUM ,SDM_SCND_SALES_DOC_ITEM_GOODS_ISSUED_QTY_BUOM_SUM ,SDM_SCND_SALES_DOC_ITEM_GOODS_ISSUED_QTY_SUOM_SUM ,SDM_SCND_SALES_DOC_ITEM_NET_VALUE_USD_SRFR ,SDM_SCND_SALES_DOC_ITEM_ORD_QTY_SALES_UNIT ,SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE_USD_SRFR ,SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE_USD_SRFR , Physical_Plant_Cd , Physical_Plant_Name ,Under_Tol_Qty ,Ship_Compl_Ind ,Sales_Doc_Cust_PO_Nbr_Rel ,PO_Req_Item_Nbr ,Sales_Doc_Item_Sched_Line ,case when Delivery_Doc_nbr is Null and scnd_sd_delivery_doc_actual_goods_issued_date is not null and backlog_ind <> 'Y' then '01. Shipped Not Billed - Interim State Issue' when sox_rec015_category in ('Shipped"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 2375,
+    "end_block": 2525,
+    "parent_block_id": "",
+    "text": "Delivery_Doc_nbr is Null and scnd_sd_delivery_doc_actual_goods_issued_date is not null and backlog_ind <> 'Y' then '01. Shipped Not Billed - Interim State Issue' when sox_rec015_category in ('Shipped Not Billed','Billed Not Posted') and backlog_ind <> 'Y' then '02. Shipped Not Billed or Posted - Normal' when backlog_ind = 'Y' and backorder_ind = 'N' then '03. BackLog W/O Backorder' when backorder_ind = 'Y' and Material_Plant_Status = '50' then '04. BackOrder on Phase Out' when backorder_ind = 'Y' then '05. BackOrder' when coalesce(DELIVERY_DOC_ITEM_QTY_SALES_UNIT,0) > 0 and DELIVERY_DOC_ACTUAL_GOODS_ISSUED_DATE is null then '06. Delivery Created Not Yet Shipped' when left(coalesce(SDM_SCND_BLOCKED_REASON,BLOCKED_REASON,''),1) in ('1','2','3','4','5','6','7') then '07. Sales Order Blocked' when Planned_GI_Measure_Date >= CURRENT_DATE() and Sales_Doc_Item_CRDD_Sent_Ind = 'Y' and (Sales_Doc_Frst_Schd_Line_CRDD - CURRENT_DATE()) >= 14 then '08. Plan GI >= Today, Cust Sent CRDD >= 14 days out' when Planned_GI_Measure_Date >= CURRENT_DATE() and Sales_Doc_Item_CRDD_Sent_Ind = 'Y' then '09. Plan GI >= Today, Cust Sent CRDD < 14 days out' when Planned_GI_Measure_Date"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 2500,
+    "end_block": 2650,
+    "parent_block_id": "",
+    "text": "days out' when Planned_GI_Measure_Date >= CURRENT_DATE() and Sales_Doc_Item_CRDD_Sent_Ind = 'Y' then '09. Plan GI >= Today, Cust Sent CRDD < 14 days out' when Planned_GI_Measure_Date >= CURRENT_DATE() then '10. Plan GI >= Today, ATP Set CRDD' when Material_Plant_Status = '50' then '11. Material Plant Status = 50' else '12. Other' end as Open_Category ,Sales_Doc_Item_Bill_Rel ,Sales_Doc_Frst_Schd_Line_CRDD ,Sales_Doc_Frst_Schd_Line_Conf_Qty ,Sales_Doc_Item_CRDD_Sent_Ind FROM ( SELECT VBAK.VBELN as Sales_Doc_Nbr ,VBAP.POSNR as Sales_Doc_Item_Nbr ,VBAK.VKORG as Sales_Org_Cd ,TVKOT.VTEXT as Sales_Org_Name ,VBAK.ERNAM as Sales_Doc_Created_By ,VBAK.AUGRU as Sales_Doc_Order_Reason_Cd ,TVAUT.BEZEI as Sales_Doc_Order_Reason_Text ,VBAK.NETWR as Sales_Doc_Net_Value ,VBAK.NETWR_USD_DOC_DT_FIXED_SRFR AS \"SD Net Value USD SRFR\" ,VBAK.VBTYP as Sales_Doc_Category_Cd ,case when VBAP.UNTTO > 0.0 then to_decimal(VBAP.KWMENG * (VBAP.UNTTO / 100),15,2) else 0 end as Under_Tol_Qty ,ROW_NUMBER() OVER (PARTITION BY vbap.VBELN ORDER BY VBAP.POSNR ASC) as Sales_Doc_Row_Nbr ,ROW_NUMBER() OVER (PARTITION BY (vbap.VBELN || vbap.POSNR) ORDER BY LIPS.VBELN ASC) as Sales_Doc_Line_Row_Nbr ,VBKD_SD.BSTKD as Sales_Doc_Cust_PO_Nbr ,TRY_TO_DATE(VBKD_SD.BSTDK,'YYYYMMDD') as Sales_Doc_Cust_PO_Date ,VBKD_SD.ZTERM as Payment_Terms ,VBKD_SD.BSARK as Sales_Doc_Cust_PO_Ord_Type_Cd ,VBKD_SDL.BSARK as Sales_Doc_Item_Cust_PO_Ord_Type_Cd ,T176T.VTEXT"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 2625,
+    "end_block": 2775,
+    "parent_block_id": "",
+    "text": "(vbap.VBELN || vbap.POSNR) ORDER BY LIPS.VBELN ASC) as Sales_Doc_Line_Row_Nbr ,VBKD_SD.BSTKD as Sales_Doc_Cust_PO_Nbr ,TRY_TO_DATE(VBKD_SD.BSTDK,'YYYYMMDD') as Sales_Doc_Cust_PO_Date ,VBKD_SD.ZTERM as Payment_Terms ,VBKD_SD.BSARK as Sales_Doc_Cust_PO_Ord_Type_Cd ,VBKD_SDL.BSARK as Sales_Doc_Item_Cust_PO_Ord_Type_Cd ,T176T.VTEXT as Sales_Doc_Cust_PO_Ord_Type_Text ,VBKD_SD.BZIRK as Sales_District_Cd ,VBAK.AUART as Sales_Doc_Type_Cd ,TVAKT.BEZEI as Sales_Doc_Type_Name ,VBAK.VTWEG as Sales_Doc_Dist_Chan ,VBAK.AUTLF as Sales_Doc_Ship_Compl_Ind ,CASE WHEN VBAK.ERDAT = '00000000' THEN NULL ELSE DATE(VBAK.ERDAT,'YYYYMMDD') END as Record_Create_Date ,CASE WHEN VBAK.AUDAT = '00000000' THEN NULL ELSE DATE(VBAK.AUDAT,'YYYYMMDD') END as Sales_Doc_Create_Date ,VBAP.WERKS as Sales_Doc_Shipping_Plant ,T001W.NAME1 as Sales_Doc_Shipping_Plant_Name ,VBAK.WAERK as Sales_Doc_Currency ,TRY_TO_DATE(VBAP.ERDAT,'YYYYMMDD') as Sales_Doc_Item_Create_Date ,VBAP.ERZET as Sales_Doc_Item_Create_Time ,CASE WHEN REGEXP_LIKE(VBAP.MATNR, '[a-zA-Z].*') THEN VBAP.MATNR ELSE RIGHT(VBAP.MATNR, 10) END AS Material_Nbr ,VBAP.MATWA as Material_Entered ,MARA.MATL_40_DS as Material_Name ,VBAP.EAN11 as EAN_UPC_Nbr ,CURRENT_DATE as Curr_Date ,(WD_END.SHIPPING_DATE_ORDER - WD_START_SDI.SHIPPING_DATE_ORDER) as Sales_Doc_Item_Work_Days_Open ,case when Sales_Doc_Item_Work_Days_Open > 30 then '5) Greater than 30 Days' when Sales_Doc_Item_Work_Days_Open > 20 then '4) Greater than 20 Days' when Sales_Doc_Item_Work_Days_Open > 10 then '3) Greater than 10 Days' when Sales_Doc_Item_Work_Days_Open >= 4 and Sales_Doc_Item_Work_Days_Open <= 10 then"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 2750,
+    "end_block": 2900,
+    "parent_block_id": "",
+    "text": "then '4) Greater than 20 Days' when Sales_Doc_Item_Work_Days_Open > 10 then '3) Greater than 10 Days' when Sales_Doc_Item_Work_Days_Open >= 4 and Sales_Doc_Item_Work_Days_Open <= 10 then '2) 4-10 Days' when Sales_Doc_Item_Work_Days_Open < 4 then '1) 0-3 Days' else '' end as Sales_Doc_Item_Work_Days_Open_Category ,VBAP.UMVKZ as Conv_Factor_Numerator ,VBAP.UMVKN as Conv_Factor_Denominator ,VBAP.MEINS as Base_Unit ,VBAP.VRKME as Sales_Unit ,VBAP.PSTYV as Sales_Doc_Item_Category_Cd ,VBAP.VGBEL as Sales_Doc_Item_Prec_Doc_Nbr ,VBAP.VGPOS as Sales_Doc_Item_Prec_Doc_Item ,VBAP.VSTEL as Sales_Doc_Item_Ship_Point ,VBAP.ROUTE as Sales_Doc_Item_Route ,VBAP.NETWR as Sales_Doc_Item_Net_Value ,VBAP.NETWR_USD_DOC_DT_DYNAMIC_SRFR as Sales_Doc_Item_Net_Value_USD_SRFR ,VBAP.NETPR as Sales_Doc_Item_Net_Price ,VBAP_SUM_GI.Sales_Doc_Item_Goods_Issued_Value_Sum ,VBAP_SUM_GI.Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR ,VBAP_SUM_GI.Sales_Doc_Item_Goods_Issued_Qty_BUOM_Sum ,VBAP_SUM_GI.Sales_Doc_Item_Goods_Issued_Qty_SUOM_Sum ,VBAP_SUM_GI.Sales_Doc_Item_Delivery_Count ,VBAP.KWMENG as Sales_Doc_Item_Ord_Qty_Sales_Unit ,VBAP.ZMENG as Sales_Doc_Item_Tgt_Qty_Sales_Unit ,case when VBAP.UMVKN <> 0 then to_decimal(KWMENG*(VBAP.UMVKZ / VBAP.UMVKN),15,2) else 0 end as Sales_Doc_Item_Ord_Qty_Base_Unit ,case when VBAP.UMVKN <> 0 then to_decimal(KWMENG*(VBAP.UMVKZ / VBAP.UMVKN),15,2) else 0 end as Sales_Doc_Item_Tgt_Qty_Base_Unit ,VBAP.VGTYP as Sales_Doc_Item_Prec_Doc_Type_Cd ,VBAP.ERNAM as Sales_Doc_Item_Created_By ,VBAP.UEBTK as Sales_Doc_Unlimited_Tolerance ,VBAP.UEBTO as Sales_Doc_Item_Over_Delv_Tol_Pct ,VBAP.UNTTO as Sales_Doc_Item_Under_Delv_Tol_Pct ,VBAP.ABGRU as Sales_Doc_Item_Reject_Reason_Cd ,VBAP.ABSTA as Sales_Doc_Item_Rejection_Status ,MARC.MRP_CTLR_ID as MRP_Controller ,T024D.USRKEY as MRP_Controller_Email ,MARC.PLNG_STRG_GRP_CD as Plan_Strat_Group ,T461X.TEXT40 as Plant_Strat_Group_Text ,VBPA_WE.KUNNR"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 2875,
+    "end_block": 3025,
+    "parent_block_id": "",
+    "text": ",VBAP.UEBTO as Sales_Doc_Item_Over_Delv_Tol_Pct ,VBAP.UNTTO as Sales_Doc_Item_Under_Delv_Tol_Pct ,VBAP.ABGRU as Sales_Doc_Item_Reject_Reason_Cd ,VBAP.ABSTA as Sales_Doc_Item_Rejection_Status ,MARC.MRP_CTLR_ID as MRP_Controller ,T024D.USRKEY as MRP_Controller_Email ,MARC.PLNG_STRG_GRP_CD as Plan_Strat_Group ,T461X.TEXT40 as Plant_Strat_Group_Text ,VBPA_WE.KUNNR as Ship_To_Nbr ,KNA1_WE.Name1 as Ship_To_Name ,KNA1_WE.ORT01 as Ship_To_City ,KNA1_WE.PSTLZ as Ship_To_Pstl_Code ,KNA1_WE.REGIO as Ship_To_Region ,KNA1_WE.LAND1 as Ship_To_Country ,ST_CNTRY.STD_DESC as Ship_To_Country_Text ,VBAK.KUNNR as Sold_To_Nbr ,KNA1_SOLD.Name1 as Sold_To_Name ,KNA1_SOLD.LAND1 as Sold_To_Country ,KNA1_SOLD.ORT01 as Sold_To_City ,KNA1_SOLD.PSTLZ as Sold_To_Pstl_Code ,KNA1_SOLD.KTOKD AS Sold_To_Acct_Grp_Cd ,VBPA_RE.KUNNR as Bill_To_Nbr ,KNA1_RE.Name1 as Bill_To_Name ,VBPA_RG.KUNNR as Payer_Nbr ,KNA1_RG.Name1 as Payer_Name ,VBPA_ZP.KUNNR as Pricing_Partner_Nbr ,KNA1_ZP.Name1 as Pricing_Partner_Name ,VBPA_ZC.PERNR as CSR_Nbr ,SAP_HR.USRID as CSR_User_Pin ,VBPA_YU.LAND1 as Ult_Dest_Ctry_Cd ,VBPA_ZS.PERNR as Sales_Rep_Nbr ,WFrep.PRSN_FRST_NAME || ' ' || WFrep.PRSN_LAST_NAME as Sales_Rep_Name ,WFcsr.PRSN_FRST_NAME || ' ' || WFcsr.PRSN_LAST_NAME as CSR_Name ,WFSup.PRSN_FRST_NAME || ' ' || WFSup.PRSN_LAST_NAME as Supv_Name ,WFSup.USER_PIN as Supv_User_Pin ,WFSup.PRSN_ID as Supv_Prsn_ID ,case when VBAP.ABSTA = 'A' then 'N' when VBAP.ABSTA = 'C' and VBAP.ABGRU in ('A5','A6','A8') then 'T' when VBAP.ABSTA = 'C' then 'Y' else 'UNKNOWN' end as"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 3000,
+    "end_block": 3150,
+    "parent_block_id": "",
+    "text": "VBAP.ABSTA = 'A' then 'N' when VBAP.ABSTA = 'C' and VBAP.ABGRU in ('A5','A6','A8') then 'T' when VBAP.ABSTA = 'C' then 'Y' else 'UNKNOWN' end as Sales_Doc_Item_Reject_Ind ,VBPA_YG.KUNNR as Cust_CSR_Acct_Group ,KNA1_YG.Name1 as Cust_CSR_Acct_Name ,VBAK.FAKSK as Sales_Doc_Billing_Block ,VBAP.FAKSP as Sales_Doc_Item_Billing_Block ,VBEP_SUM.BMENG_SUM as Sales_Doc_Sched_Line_Conf_Qty_Sales_Unit ,VBEP_SUM.Conf_Qty_Sum_BUOM as Sales_Doc_Sched_Line_Conf_Qty_Base_Unit ,VBEP_MR.LIFSP as Sales_Doc_Sched_Line_Delivery_Block ,CASE WHEN (VBEP_MR.WADAT ='00000000' OR VBEP_MR.WADAT= '241025T1') THEN NULL ELSE DATE(VBEP_MR.WADAT,'YYYYMMDD') END as Current_Planned_Goods_Issued_Date , CASE WHEN (VBEP_MR.EDATU ='00000000' OR VBEP_MR.EDATU= '241025T1') THEN NULL ELSE DATE(VBEP_MR.EDATU,'YYYYMMDD') END as Current_Expected_Delivery_Date ,CASE WHEN (VBEP_MR.MBDAT ='00000000' OR VBEP_MR.MBDAT = '241025T1') THEN NULL ELSE DATE(VBEP_MR.MBDAT,'YYYYMMDD') END as Current_Matl_Avlb_Date ,VBAK.LIFSK as Sales_Doc_Delivery_Block ,VBAK.GBSTK as Sales_Doc_Overall_Status ,VBAP.GBSTA as Sales_Doc_Item_Overall_Status ,VBAK.UVALL as Sales_Doc_Incompletion_Status ,VBAK.UVALS as Sales_Doc_Total_Incompletion_Status ,VBAK.CMGST as Sales_Doc_Overall_Credit_Status ,VBAP.UVVLK as Sales_Doc_Item_Incompletion_Status_Delivery ,VBAP.UVALL as Sales_Doc_Item_Incompletion_Status ,VBAP.LFSTA as Sales_Doc_Item_Delivery_Status ,VBAP.LFGSA as Sales_Doc_Item_Overall_Delivery_Status ,VBAP.FSSTA as Sales_Doc_Item_Billing_Block_Status ,VBAP.FKSAA as Sales_Doc_Item_Billing_Status ,VBAP.EMCST as GTS_Embargo_Status ,VBAP.SLCST as GTS_Screening_Status ,VBAP.TOTAL_LCCST as GTS_Legal_Control_Status ,VBAP.LGLC_LIC_IND as GTS_Legal_Control_License ,MVKE.DST_CHN_MAT_STS_CD as Material_Sales_Status ,MVKE.LCL_CAT_ID as Material_Sales_LCL_Cat_ID ,MVKE.DEL_PLNT_CD as Material_Sales_Delv_Plant ,case when"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 3125,
+    "end_block": 3275,
+    "parent_block_id": "",
+    "text": "as Sales_Doc_Item_Billing_Status ,VBAP.EMCST as GTS_Embargo_Status ,VBAP.SLCST as GTS_Screening_Status ,VBAP.TOTAL_LCCST as GTS_Legal_Control_Status ,VBAP.LGLC_LIC_IND as GTS_Legal_Control_License ,MVKE.DST_CHN_MAT_STS_CD as Material_Sales_Status ,MVKE.LCL_CAT_ID as Material_Sales_LCL_Cat_ID ,MVKE.DEL_PLNT_CD as Material_Sales_Delv_Plant ,case when MVKE.DST_CHN_MAT_STS_CD in ('05','95','99') then 'Y' else 'N' end as Material_Sales_Blocked_Ind ,MARC.PLT_SPF_MAT_STS_CD as Material_Plant_Status ,MARA.CRS_PLT_MAT_STS_CD as Material_Cross_Plant_Status ,MARA.SAP_MATL_TYPE_CD as Material_Type_Cd ,PRODH.PROD_LVL_07_CD as Global_Sales_Cd ,PRODH.PROD_LVL_07_DS as Global_Sales_Cd_Name ,PRODH.PROD_LVL_06_CD as Prod_Group_2_Cd ,PRODH.PROD_LVL_06_DS as Prod_Group_2_Name ,PRODH.PROD_LVL_05_CD as Prod_Group_1_Cd ,PRODH.PROD_LVL_05_DS as Prod_Group_1_Name ,right(PRODH.PROD_LVL_04_CD,4) as Profit_Center_Cd ,PRODH.PROD_LVL_04_DS as Profit_Center_Name ,PRODH.PROD_LVL_03_CD as Bus_Unit_Cd ,PRODH.PROD_LVL_03_DS as Bus_Unit_Name ,PRODH.PROD_LVL_02_CD as Division_Cd ,PRODH.PROD_LVL_02_DS as Division_Name ,T001.BUKRS as Company_Cd ,T001.BUTXT as Company_Cd_Name ,T001.LAND1 as Sales_Org_Country_Cd ,CCGEO.BUSU_AREA_NAME as Company_Cd_Area ,CCGEO.SPR_RGN_NAME as Company_Cd_Super_Region ,CCGEO.RGN_NAME as Company_CD_Region ,LIPS.VBELN as Delivery_Doc_Nbr ,LIPS.POSNR as Delivery_Doc_Item_Nbr ,TRY_TO_DATE(LIKP.BLDAT,'YYYYMMDD') as Delivery_Doc_Date ,LIKP.FAKSK as Delivery_Doc_Billing_Block ,LIKP.FKSTK as Delivery_Doc_Billing_Status ,TRY_TO_DATE(LIKP.WADAT,'YYYYMMDD') as Delivery_Doc_Planned_Goods_Issued_Date ,TRY_TO_DATE(LIKP.WADAT_IST,'YYYYMMDD') as Delivery_Doc_Actual_Goods_Issued_Date ,TRY_TO_DATE(LIKP.FKDAT,'YYYYMMDD') as Delivery_Doc_Planned_Customer_Billing_Date ,TRY_TO_DATE(LIKP.PODAT,'YYYYMMDD') as Delivery_Doc_Proof_of_Delivery ,lips.NETWR_CALC as Delivery_Doc_Item_Net_Value ,lips.NETWR_CALC_USD_DOC_DT_DYNAMIC_SRFR as Delivery_Doc_Item_Net_Value_USD_SRFR ,(lips.LGMNG + lips.KCMENG) as Delivery_Doc_Item_Qty_Base_Unit ,DIV0NULL(((lips.LGMNG + lips.KCMENG) * VBAP.UMZIN) ,VBAP.UMZIZ) as Delivery_Doc_Item_Qty_Sales_Unit ,lips.GOODS_ISSUED_NET_VALUE as Delivery_Doc_Goods_Issued_Net_Value ,lips.GOODS_ISSUED_NET_VALUE_USD_DOC_DT_DYNAMIC_SRFR as Delivery_Doc_Goods_Issued_Net_Value_USD_SRFR"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 3250,
+    "end_block": 3400,
+    "parent_block_id": "",
+    "text": ",lips.NETWR_CALC as Delivery_Doc_Item_Net_Value ,lips.NETWR_CALC_USD_DOC_DT_DYNAMIC_SRFR as Delivery_Doc_Item_Net_Value_USD_SRFR ,(lips.LGMNG + lips.KCMENG) as Delivery_Doc_Item_Qty_Base_Unit ,DIV0NULL(((lips.LGMNG + lips.KCMENG) * VBAP.UMZIN) ,VBAP.UMZIZ) as Delivery_Doc_Item_Qty_Sales_Unit ,lips.GOODS_ISSUED_NET_VALUE as Delivery_Doc_Goods_Issued_Net_Value ,lips.GOODS_ISSUED_NET_VALUE_USD_DOC_DT_DYNAMIC_SRFR as Delivery_Doc_Goods_Issued_Net_Value_USD_SRFR ,lips.GOODS_ISSUE_QTY_BUOM as Delivery_Doc_Goods_Issued_Qty_Base_Unit ,lips.GOODS_ISSUE_QTY_SUOM as Delivery_Doc_Goods_Issued_Qty_Sales_Unit ,lips.NTGEW + lips.KCNTGEW as Delivery_Doc_Item_Net_Weight ,lips.BRGEW + lips.KCBRGEW as Delivery_Doc_Item_Gross_Weight ,lips.GEWEI as Delivery_Doc_Weight_Unit ,lips.VOLUM + LIPS.KCVOLUM as Delivery_Doc_Volume ,lips.VOLEH as Delivery_Doc_Volume_Unit ,CASE WHEN VBAP.WBSTA = '' THEN (lips.LGMNG + lips.KCMENG) ELSE 0 END as Delivery_Doc_Item_Qty_Not_Relevant_BUOM ,LIKP.VBTYP as Delivery_Doc_Category ,case when BD_OBD.VBELN is not null then BD_OBD.VBELN else BD_SD.VBELN END as Billing_Doc_Nbr ,case when BD_OBD.FKDAT is not null then DATE(BD_OBD.FKDAT,'YYYYMMDD') else DATE(BD_SD.FKDAT,'YYYYMMDD') end as Billing_Doc_Date ,case when BD_OBD.FKDAT is not null then YEAR(DATE(BD_OBD.FKDAT,'YYYYMMDD')) || MONTH(DATE(BD_OBD.FKDAT,'YYYYMMDD')) else YEAR(DATE(BD_SD.FKDAT,'YYYYMMDD')) || MONTH(DATE(BD_SD.FKDAT,'YYYYMMDD')) end as \"BD Date Year Month\" ,case when BD_OBD.FKDAT is not null then YEAR(DATE(BD_OBD.FKDAT,'YYYYMMDD')) || WEEKISO(DATE(BD_OBD.FKDAT,'YYYYMMDD')) else YEAR(DATE(BD_SD.FKDAT,'YYYYMMDD')) || WEEKISO(DATE(BD_SD.FKDAT,'YYYYMMDD')) end as \"BD Date Year Week\" ,case when BD_OBD.FKART is not null then BD_OBD.FKART else BD_SD.FKART end as Billing_Doc_Bill_Type ,case when"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 3375,
+    "end_block": 3525,
+    "parent_block_id": "",
+    "text": "else YEAR(DATE(BD_SD.FKDAT,'YYYYMMDD')) || WEEKISO(DATE(BD_SD.FKDAT,'YYYYMMDD')) end as \"BD Date Year Week\" ,case when BD_OBD.FKART is not null then BD_OBD.FKART else BD_SD.FKART end as Billing_Doc_Bill_Type ,case when BD_OBD.FKTYP is not null then BD_OBD.FKTYP else BD_SD.FKTYP end as Billing_Doc_Bill_Category ,case when BD_OBD.VBTYP is not null then BD_OBD.VBTYP else BD_SD.VBTYP end as Billing_Doc_Doc_Category ,case when BD_OBD.WAERK is not null then BD_OBD.WAERK else BD_SD.WAERK end as Billing_Doc_Currency ,case when BD_OBD.RFBSK is not null then BD_OBD.RFBSK else BD_SD.RFBSK end as Billing_Doc_Accounting_Posting_Status ,case when BD_OBD.VBRK_NETWR is not null then BD_OBD.VBRK_NETWR else BD_SD.VBRK_NETWR end as Billing_Doc_Net_Value ,case when BD_OBD.KNUMV is not null then BD_OBD.KNUMV else BD_SD.KNUMV end as Billing_Doc_Price_Cond_Nbr ,case when BD_OBD.POSNR is not null then BD_OBD.POSNR else BD_SD.POSNR end as Billing_Doc_Item_Nbr ,case when BD_OBD.ERDAT is not null then BD_OBD.ERDAT else BD_SD.ERDAT end as Billing_Doc_Item_Date ,case when BD_OBD.VBRP_NETWR is not null then BD_OBD.VBRP_NETWR else BD_SD.VBRP_NETWR end as Billing_Doc_Item_Net_Value ,case when BD_OBD.NETWR_USD_DOC_DT_FIXED_SRFR is not null then BD_OBD.NETWR_USD_DOC_DT_FIXED_SRFR else BD_SD.NETWR_USD_DOC_DT_FIXED_SRFR"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 3500,
+    "end_block": 3650,
+    "parent_block_id": "",
+    "text": "as Billing_Doc_Item_Date ,case when BD_OBD.VBRP_NETWR is not null then BD_OBD.VBRP_NETWR else BD_SD.VBRP_NETWR end as Billing_Doc_Item_Net_Value ,case when BD_OBD.NETWR_USD_DOC_DT_FIXED_SRFR is not null then BD_OBD.NETWR_USD_DOC_DT_FIXED_SRFR else BD_SD.NETWR_USD_DOC_DT_FIXED_SRFR end as Billing_Doc_Item_Net_Value_USD_SRFR ,case when BD_OBD.LOCAL_CURR is not null then BD_OBD.LOCAL_CURR else BD_SD.LOCAL_CURR end as Billing_Doc_Item_Net_Value_loc_srfr ,case when BD_OBD.LLAND_AUFT is not null then BD_OBD.LLAND_AUFT else BD_SD.LLAND_AUFT end as Billing_Doc_Item_Dest_Country_Cd ,case when BD_OBD.FKLMG is not null then BD_OBD.FKLMG else BD_SD.FKLMG end as Billing_Doc_Item_Qty_Base_Unit ,case when BD_OBD.FKIMG is not null then BD_OBD.FKIMG else BD_SD.FKIMG end as Billing_Doc_Item_Qty_Sales_Unit ,case when BD_OBD.ERNAM is not null then BD_OBD.ERNAM else BD_SD.ERNAM end as Billing_Doc_Item_Created_By ,case when BD_OBD.PRSDT is not null then BD_OBD.PRSDT else BD_SD.PRSDT end as Billing_Doc_Item_Price_Date ,To_Decimal( Case When (T630R.PIPATG + T630R.PIPATN) Is Not Null Then (T630R.PIPATG + T630R.PIPATN) / 10000 Else (T630R_SP.PIPATG + T630R_SP.PIPATN) / 10000 End, 10, 2) as Pick_Pack_Hours ,To_Decimal(Case When (T630R.PIPATG + T630R.PIPATN) Is Not Null Then ((T630R.PIPATG + T630R.PIPATN) / 10000) / 24 Else ((T630R_SP.PIPATG"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 3625,
+    "end_block": 3775,
+    "parent_block_id": "",
+    "text": "/ 10000 End, 10, 2) as Pick_Pack_Hours ,To_Decimal(Case When (T630R.PIPATG + T630R.PIPATN) Is Not Null Then ((T630R.PIPATG + T630R.PIPATN) / 10000) / 24 Else ((T630R_SP.PIPATG + T630R_SP.PIPATN) / 10000) / 24 End, 10, 3) as Pick_Pack_Days ,case when coalesce(BD_OBD.RFBSK,BD_SD.RFBSK,'') in ('C','D','E') then 'N' when VBAP.ABSTA = 'C' and VBAP.ABGRU in ('A5','A6','A8') then 'Y' when VBAP.ABSTA = 'C' and VBAP.ABGRU <> '' then 'N' when VBAP.GBSTA <> 'C' then 'Y' when VBAK.VBTYP in ('C','H','I') AND VBAP.LFGSA <> 'C' then 'Y' when (vbap_sum_gi.Sales_Doc_Item_Goods_Issued_Qty_SUOM_Sum + Under_Tol_Qty) < vbap.kwmeng then 'Y' when VBAP.FKREL = '' or VBAK.AUART in ('ZCF') or coalesce(LIKP.FKSTK,'X') = '' then 'N' when coalesce(BD_OBD.RFBSK,BD_SD.RFBSK,'') not in ('C','D','E') then 'Y' else 'N' end as Sales_Doc_Item_Open_Ind ,case when coalesce(BD_OBD.RFBSK,BD_SD.RFBSK,'') in ('C','D','E') then 'Closed' when VBAP.ABSTA = 'C' and VBAP.ABGRU in ('A5','A6','A8') then 'Open - Temp Reject' when VBAP.ABSTA = 'C' and VBAP.ABGRU <> '' then 'Closed - Perm Reject' when VBAP.GBSTA <> 'C'"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 3750,
+    "end_block": 3900,
+    "parent_block_id": "",
+    "text": "VBAP.ABGRU in ('A5','A6','A8') then 'Open - Temp Reject' when VBAP.ABSTA = 'C' and VBAP.ABGRU <> '' then 'Closed - Perm Reject' when VBAP.GBSTA <> 'C' then 'Open - SD Overall Item Status' when VBAK.VBTYP in ('C','H','I') AND VBAP.LFGSA <> 'C' then 'Open - SD Overall Item Delivery Status' when (vbap_sum_gi.Sales_Doc_Item_Goods_Issued_Qty_SUOM_Sum + Under_Tol_Qty) < vbap.kwmeng then 'Open - Orig SD Not Shipped In Full' when VBAP.FKREL = '' or VBAK.AUART in ('ZCF') or coalesce(LIKP.FKSTK,'X') = '' then 'Closed' when coalesce(BD_OBD.RFBSK,BD_SD.RFBSK,'') not in ('C','D','E') then 'Open - Account Posting Status' else 'Closed' end as Sales_Doc_Item_Open_Category ,case when coalesce(BD_OBD.RFBSK,BD_SD.RFBSK,'') in ('C','D','E') then 'N' when VBAP.ABSTA = 'C' and VBAP.ABGRU in ('A5','A6','A8') then 'Y' when VBAP.ABSTA = 'C' and VBAP.ABGRU <>'' then 'N' when VBAP.GBSTA <> 'C' then 'Y' when VBAK.VBTYP in ('C','H','I') AND VBAP.LFGSA <> 'C' then 'Y' when (vbap_sum_gi.Sales_Doc_Item_Goods_Issued_Qty_SUOM_Sum + Under_Tol_Qty) < vbap.kwmeng then 'Y' else 'N' end as Sales_Doc_Item_CSR_Open_Ind ,case when"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 3875,
+    "end_block": 4025,
+    "parent_block_id": "",
+    "text": "when VBAK.VBTYP in ('C','H','I') AND VBAP.LFGSA <> 'C' then 'Y' when (vbap_sum_gi.Sales_Doc_Item_Goods_Issued_Qty_SUOM_Sum + Under_Tol_Qty) < vbap.kwmeng then 'Y' else 'N' end as Sales_Doc_Item_CSR_Open_Ind ,case when coalesce(BD_OBD.RFBSK,BD_SD.RFBSK,'') in ('C','D','E') then 'Closed' when VBAP.ABSTA = 'C' and VBAP.ABGRU in ('A5','A6','A8') then 'Open - Temp Reject' when VBAP.ABSTA = 'C' and VBAP.ABGRU <>'' then 'Closed - Perm Reject' when VBAP.GBSTA <> 'C' then 'Open - SD Overall Item Status' when VBAK.VBTYP in ('C','H','I') AND VBAP.LFGSA <> 'C' then 'Open - SD Overall Item Delivery Status' when (vbap_sum_gi.Sales_Doc_Item_Goods_Issued_Qty_SUOM_Sum + Under_Tol_Qty) < vbap.kwmeng then 'Open - Orig SD Not Shipped In Full' else 'Closed' end as Sales_Doc_Item_CSR_Open_Category ,case when VBAP.MATNR = 'INVALIDMATNO' and right(VBAP.ARKTX,4) = '#M01' then '1.01 - Material Does not Exist' when VBAP.MATNR = 'INVALIDMATNO' and right(VBAP.ARKTX,4) = '#M02' then '1.02 - Material Not Extended' when VBAP.MATNR = 'INVALIDMATNO' and right(VBAP.ARKTX,4) = '#M03' then '1.03 - Material Marked for Block' when VBAP.MATNR ="
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 4000,
+    "end_block": 4150,
+    "parent_block_id": "",
+    "text": "'#M02' then '1.02 - Material Not Extended' when VBAP.MATNR = 'INVALIDMATNO' and right(VBAP.ARKTX,4) = '#M03' then '1.03 - Material Marked for Block' when VBAP.MATNR = 'INVALIDMATNO' and right(VBAP.ARKTX,4) = '#M04' then '1.04 - Material List and/or Exclusion Error' when VBAP.MATNR = 'INVALIDMATNO' and right(VBAP.ARKTX,4) = 'DOCS' then '1.05 - Material Manual Entry Issue' when VBAP.MATNR = 'INVALIDMATNO' then '1.06 - INVALIDMATNO - unspecified ARKTX' when VBAP.ABGRU IN ('A5') then '2.01 - A5 Rejected Line' when VBAP.ABGRU IN ('A6','A8') then '2.02 - A6/A8 Rejected Line' when VBAK.LIFSK = '93' then '3.01 - Pricing Block 93 (Hdr)' when coalesce(VBEP_MR.LIFSP,'') = '93' then '3.01 - Pricing Block 93 (Line)' when VBAK.LIFSK = '88' then '3.02 - Cutover Block 88 (Hdr)' when coalesce(VBEP_MR.LIFSP,'') = '88' then '3.02 - Cutover Block 88 (Line)' when VBAK.LIFSK = '89' then '3.03 - Retrieve Alert Block 89 (Hdr)' when coalesce(VBEP_MR.LIFSP,'') = '89' then '3.03 - Retrieve Alert Block"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 4125,
+    "end_block": 4275,
+    "parent_block_id": "",
+    "text": "Block 88 (Line)' when VBAK.LIFSK = '89' then '3.03 - Retrieve Alert Block 89 (Hdr)' when coalesce(VBEP_MR.LIFSP,'') = '89' then '3.03 - Retrieve Alert Block 89 (Line)' when VBAK.LIFSK = '91' then '3.04 - Cust Request Block 91 (Hdr)' when coalesce(VBEP_MR.LIFSP,'') = '91' then '3.04 - Cust Request Block 91 (Line)' when VBAK.LIFSK = '92' then '3.05 - CSR Hold Block 92 (Hdr)' when coalesce(VBEP_MR.LIFSP,'') = '92' then '3.05 - CSR Hold Block 92 (Line)' when VBAK.LIFSK = '94' then '3.06 - Quality Issue Block 94 (Hdr)' when coalesce(VBEP_MR.LIFSP,'') = '94' then '3.06 - Quality Issue Block 94 (Line)' when VBAK.LIFSK = '95' then '3.07 - EDI/NGG Block 95 (Hdr)' when coalesce(VBEP_MR.LIFSP,'') = '95' then '3.07 - EDI/NGG Block 95 (Line)' when VBAK.LIFSK = '96' then '3.08 - Adv Pay Reqd Block 96 (Hdr)' when coalesce(VBEP_MR.LIFSP,'') = '96' then '3.08 - Adv Pay Reqd Block 96 (Line)' when VBAK.LIFSK ="
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "block_group": 4,
+    "block_type": "CTE",
+    "start_block": 4250,
+    "end_block": 4335,
+    "parent_block_id": "",
+    "text": "then '3.08 - Adv Pay Reqd Block 96 (Hdr)' when coalesce(VBEP_MR.LIFSP,'') = '96' then '3.08 - Adv Pay Reqd Block 96 (Line)' when VBAK.LIFSK = '97' then '3.09 - WH Nil-Pick Block 97 (Hdr)' when coalesce(VBEP_MR.LIFSP,'') = '97' then '3.09 - WH Nil-Pick Block 97 (Line)' when coalesce(VBEP_MR.LIFSP,'') = '99' then '3.10 - CSR Review Block 99 (Line)' when VBAK.UVALL <> 'C' then '4.01 - Incompletion (Hdr)' when VBAP.UVALL <> 'C' then '4.02 - Incompletion (Line)' when VBAK.UVALS <> 'C' then '4.03 - Incompletion Assoc"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7_sub1",
+    "block_group": 4,
+    "block_type": "SUBQUERY",
+    "start_block": 0,
+    "end_block": 18,
+    "parent_block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "text": "SELECT MANDT ,VBELN ,PARVW ,PERNR ,KUNNR ,LAND1 ,LIFNR FROM PUBLISH.CORE_CO_COMMON_CDS.V_VBPA WHERE POSNR = '000000' AND PARVW in ('ZC','WE','RE','RG','YU','ZP','ZS','YG','ZT'"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7_sub2",
+    "block_group": 4,
+    "block_type": "SUBQUERY",
+    "start_block": 0,
+    "end_block": 31,
+    "parent_block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "text": "SELECT VBEP.MANDT ,VBEP.VBELN ,VBEP.POSNR ,SUM(VBEP.BMENG) as BMENG_SUM ,SUM(CASE WHEN VBEP.UMVKN <> 0 then ROUND(VBEP.BMENG*(VBEP.UMVKZ / VBEP.UMVKN)) ELSE 0 END) AS Conf_Qty_Sum_BUOM FROM PUBLISH.CORE_CO_COMMON_CDS.V_VBEP VBEP WHERE VBEP.BMENG > 0 GROUP BY ALL"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7_sub3",
+    "block_group": 4,
+    "block_type": "SUBQUERY",
+    "start_block": 0,
+    "end_block": 66,
+    "parent_block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "text": "SELECT VBAP.MANDT ,VBAP.VBELN ,VBAP.POSNR ,VBAP.VSTEL ,vbap.werks ,VBAK.AUART ,VBAP.PSTYV ,EKPO.EBELN as Purch_Order_Nbr ,EKPO.EBELP as Purch_Order_Item_Nbr ,EKKO.UNSEZ as Purch_Order_Our_Ref ,MAX(TRY_TO_DATE(EKES_AB.EINDT,'YYYYMMDD')) as Purch_Order_Conf_Date_AB_Max ,MAX(TRY_TO_DATE(EKES_LA.EINDT,'YYYYMMDD')) as Purch_Order_Conf_Date_LA_Max from PUBLISH.CORE_CO_OM_CDS.V_VBAK VBAK inner join PUBLISH.CORE_CO_OM_CDS.V_VBAP VBAP on vbak.vbeln = vbap.vbeln inner join PUBLISH.CORE_CO_COMMON_CDS.V_EKKN EKKN on EKKN.VBELN = VBAP.VBELN and EKKN.VBELP = VBAP.POSNR inner join PUBLISH.CORE_CO_COMMON_CDS.V_EKKO EKKO on EKKO.EBELN = EKKN.EBELN inner join PUBLISH.CORE_GSC_COMMON_CDS.V_EKPO EKPO on EKPO.EBELN = EKKN.EBELN and EKPO.EBELP = right(EKKN.EBELP,5"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7_sub4",
+    "block_group": 4,
+    "block_type": "SUBQUERY",
+    "start_block": 0,
+    "end_block": 63,
+    "parent_block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "text": "SELECT CDHDR.OBJECTCLAS ,CDHDR.OBJECTID as Sales_Doc_Nbr ,TRY_TO_DATE(CDHDR.UDATE,'YYYYMMDD') as Remove_Date ,TRY_TO_TIME(CDHDR.UTIME) as Remove_Time ,TIMESTAMP_FROM_PARTS(DATE(CDHDR.UDATE,'YYYYMMDD'),TRY_TO_TIME(CDHDR.UTIME)) as Remove_Time_Stamp ,CDHDR.TCODE ,CDHDR.USERNAME ,CDPOS.TABNAME ,CDPOS.FNAME ,CDPOS.CHNGIND ,CDPOS.VALUE_OLD ,CDPOS.VALUE_NEW FROM PUBLISH.CORE_CO_COMMON_CDS.V_CDHDR CDHDR INNER JOIN PUBLISH.CORE_CO_COMMON_CDS.V_CDPOS CDPOS ON CDHDR.OBJECTCLAS = CDPOS.OBJECTCLAS AND CDHDR.OBJECTID = CDPOS.OBJECTID AND CDHDR.CHANGENR = CDPOS.CHANGENR WHERE CDHDR.OBJECTCLAS = 'VERKBELEG' AND CDPOS.TABNAME = 'VBAK' AND ( (FNAME = 'LIFSK' AND VALUE_OLD between '80' and '99' and VALUE_NEW = ''"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7_sub5",
+    "block_group": 4,
+    "block_type": "SUBQUERY",
+    "start_block": 0,
+    "end_block": 69,
+    "parent_block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "text": "SELECT CDHDR.OBJECTCLAS ,CDHDR.OBJECTID as Sales_Doc_Nbr ,CDPOS.TABKEY ,SUBSTR(CDPOS.TABKEY,14,6) as Sales_Doc_Item_Nbr ,CDHDR.CHANGENR ,TRY_TO_DATE(CDHDR.UDATE,'YYYYMMDD') as Remove_Date ,TRY_TO_TIME(CDHDR.UTIME) as Remove_Time ,TIMESTAMP_FROM_PARTS(DATE(CDHDR.UDATE,'YYYYMMDD'),TRY_TO_TIME(CDHDR.UTIME)) as Remove_Time_Stamp ,CDHDR.TCODE ,CDHDR.USERNAME ,CDPOS.TABNAME ,CDPOS.FNAME ,CDPOS.CHNGIND ,CDPOS.VALUE_OLD ,CDPOS.VALUE_NEW FROM PUBLISH.CORE_CO_COMMON_CDS.V_CDHDR CDHDR INNER JOIN PUBLISH.CORE_CO_COMMON_CDS.V_CDPOS CDPOS ON CDHDR.OBJECTCLAS = CDPOS.OBJECTCLAS AND CDHDR.OBJECTID = CDPOS.OBJECTID AND CDHDR.CHANGENR = CDPOS.CHANGENR WHERE CDHDR.OBJECTCLAS = 'VERKBELEG' AND CDPOS.TABNAME = 'VBEP' AND CDPOS.FNAME = 'LIFSP' AND CDPOS.VALUE_OLD between '80' and '99' AND CDPOS.VALUE_NEW = '' QUALIFY ROW_NUMBER("
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7_sub6",
+    "block_group": 4,
+    "block_type": "SUBQUERY",
+    "start_block": 0,
+    "end_block": 69,
+    "parent_block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "text": "SELECT CDHDR.OBJECTCLAS ,CDHDR.OBJECTID as Sales_Doc_Nbr ,CDPOS.TABKEY ,RIGHT(CDPOS.TABKEY,6) as Sales_Doc_Item_Nbr ,CDHDR.CHANGENR ,TRY_TO_DATE(CDHDR.UDATE,'YYYYMMDD') as Remove_Date ,TRY_TO_TIME(CDHDR.UTIME) as Remove_Time ,TIMESTAMP_FROM_PARTS(DATE(CDHDR.UDATE,'YYYYMMDD'),TRY_TO_TIME(CDHDR.UTIME)) as Remove_Time_Stamp ,CDHDR.TCODE ,CDHDR.USERNAME ,CDPOS.TABNAME ,CDPOS.FNAME ,CDPOS.CHNGIND ,CDPOS.VALUE_OLD ,CDPOS.VALUE_NEW FROM PUBLISH.CORE_CO_COMMON_CDS.V_CDHDR CDHDR INNER JOIN PUBLISH.CORE_CO_COMMON_CDS.V_CDPOS CDPOS ON CDHDR.OBJECTCLAS = CDPOS.OBJECTCLAS AND CDHDR.OBJECTID = CDPOS.OBJECTID AND CDHDR.CHANGENR = CDPOS.CHANGENR WHERE CDHDR.OBJECTCLAS = 'VERKBELEG' AND CDPOS.TABNAME = 'VBAP' AND CDPOS.FNAME = 'FAKSP' AND CDPOS.VALUE_OLD between 'Z1' and 'ZY' AND CDPOS.VALUE_NEW = '' QUALIFY ROW_NUMBER("
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7_sub7",
+    "block_group": 4,
+    "block_type": "SUBQUERY",
+    "start_block": 0,
+    "end_block": 53,
+    "parent_block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "text": "SELECT CDHDR.OBJECTCLAS ,CDHDR.OBJECTID as Sales_Doc_Nbr ,CDPOS.TABKEY ,RIGHT(CDPOS.TABKEY,6) as Sales_Doc_Item_Nbr ,CDHDR.CHANGENR ,TRY_TO_DATE(CDHDR.UDATE,'YYYYMMDD') as Reject_Date ,TRY_TO_TIME(CDHDR.UTIME) as Reject_Time ,TIMESTAMP_FROM_PARTS(DATE(CDHDR.UDATE,'YYYYMMDD'),TRY_TO_TIME(CDHDR.UTIME)) as CLTIMESTAMP ,CDHDR.TCODE ,CDHDR.USERNAME ,CDPOS.TABNAME ,CDPOS.FNAME ,CDPOS.CHNGIND ,CDPOS.VALUE_OLD ,CDPOS.VALUE_NEW FROM PUBLISH.CORE_CO_COMMON_CDS.V_CDHDR CDHDR INNER JOIN PUBLISH.CORE_CO_COMMON_CDS.V_CDPOS CDPOS ON CDHDR.OBJECTCLAS = CDPOS.OBJECTCLAS AND CDHDR.OBJECTID = CDPOS.OBJECTID AND CDHDR.CHANGENR = CDPOS.CHANGENR WHERE CDHDR.OBJECTCLAS = 'VERKBELEG' AND CDPOS.TABNAME in ('VBAP'"
+  },
+  {
+    "block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7_sub8",
+    "block_group": 4,
+    "block_type": "SUBQUERY",
+    "start_block": 0,
+    "end_block": 50,
+    "parent_block_id": "9ba04454-736e-4172-bf8e-b49d34d60bd7",
+    "text": "SELECT vbrp.mandt ,vbrp.vgbel ,vbrp.vgpos ,vbrp.vbeln ,vbrp.vgtyp ,vbrp.posnr ,VBRK.FKDAT ,VBRK.FKART ,VBRK.FKTYP ,VBRK.VBTYP ,VBRK.WAERK ,VBRK.RFBSK ,VBRK.KNUMV ,VBRK.NETWR as VBRK_NETWR ,VBRP.NETWR as VBRP_NETWR ,VBRP.NETWR_USD_DOC_DT_FIXED_SRFR ,VBRP.NETWR_USD_DOC_DT_DYNAMIC_SRFR as VBRP_NETWR_USD_SRFR ,TRY_TO_DATE(VBRP.ERDAT,'YYYYMMDD') as ERDAT ,VBRP.LLAND_AUFT ,VBRP.FKLMG ,VBRP.FKIMG ,VBRP.ERNAM ,TRY_TO_DATE(VBRP.PRSDT,'YYYYMMDD') as PRSDT ,vbrp.LOCAL_CURR FROM PUBLISH.CORE_CO_COMMON_CDS.V_VBRK vbrk INNER JOIN PUBLISH.CORE_CO_OM_CDS.V_VBRP vbrp ON vbrp.vbeln = vbrk.vbeln WHERE vbrk.vbtyp in ('M','O','P'"
+  },
+  {
+    "block_id": "54ea1993-e5cf-4ffd-8e0d-1c22c5155419",
+    "block_group": 5,
+    "block_type": "CTE",
+    "start_block": 0,
+    "end_block": 12,
+    "parent_block_id": "",
+    "text": "with an Incomplete Line' when VBAK.LIFSK = '99' then '3.11 - Associated"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "block_group": 6,
+    "block_type": "CTE",
+    "start_block": 0,
+    "end_block": 150,
+    "parent_block_id": "",
+    "text": "with a Delivery Block 99 (Hdr)' when VBAK.LIFSK = '80' then '3.12 - Obsl Plant Block 80 (Hdr)' when coalesce(VBEP_MR.LIFSP,'') = '80' then '3.12 - Obsl Plant Block 80 (Line)' when VBAK.LIFSK = '87' then '3.13 - Adv Pay Hold Block 87 (Hdr)' when coalesce(VBEP_MR.LIFSP,'') = '87' then '3.13 - Adv Pay Hold Block 87 (Line)' when VBAK.LIFSK Not In ('','80','87','88','89','91','92','93','94','95','97','97','99') then '3.15 - Delivery Block - Other (Hdr)' when COALESCE(VBEP_MR.LIFSP,'') Not In ('','80','87','88','89','91','92','93','94','95','97','97','99') then '3.15 - Delivery Block - Other (Line)' when VBAP.EMCST = 'C' then '5.01 - GTS Embargo Block' when VBAP.SLCST = 'C' then '5.02 - GTS Screening Bolck' when VBAP.TOTAL_LCCST in ('C','E') then '5.03 - GTS_Legal Control Block' when VBAK.CMGST in ('B','C') and VBKD_SD.ZTERM = 'ZC66' then '6.01 - Credit Block - Credit Card Auth' when VBAK.CMGST in ('B','C') then '6.02 - Credit Block' when VBAK.FAKSK <> '' then '7.01 - Billing Block (HDR)' when VBAP.FAKSP"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "block_group": 6,
+    "block_type": "CTE",
+    "start_block": 125,
+    "end_block": 275,
+    "parent_block_id": "",
+    "text": "- Credit Card Auth' when VBAK.CMGST in ('B','C') then '6.02 - Credit Block' when VBAK.FAKSK <> '' then '7.01 - Billing Block (HDR)' when VBAP.FAKSP <> '' then '7.02 - Billing Block (LINE)' else '8 - Not Blocked' end as Blocked_Reason ,case when VBAP.MATNR ='INVALIDMATNO' then 'Y' else 'N' end as Block_Dlv_Invalid_Matno_Ind ,case when VBAP.ABGRU IN ('A5') then 'Y' else 'N' end as Block_Dlv_Temp_Reject_A5_Ind ,case when VBAP.ABGRU IN ('A6','A8') then 'Y' else 'N' end as Block_Dlv_Temp_Reject_Other_Ind ,case when VBAK.LIFSK = '80' or coalesce(VBEP_MR.LIFSP,'') = '80' then 'Y' else 'N' end as Block_Dlv_80_Obsl_Plant_Ind ,case when VBAK.LIFSK = '87' or coalesce(VBEP_MR.LIFSP,'') = '87' then 'Y' else 'N' end as Block_Dlv_87_Adv_Pay_Hold_Ind ,case when VBAK.LIFSK = '88' or coalesce(VBEP_MR.LIFSP,'') = '88' then 'Y' else 'N' end as Block_Dlv_88_Cutover_Ind ,case when VBAK.LIFSK = '89' or coalesce(VBEP_MR.LIFSP,'') = '89' then 'Y' else 'N' end as Block_Dlv_89_Retrieve_Alert_Ind ,case when VBAK.LIFSK = '91' or coalesce(VBEP_MR.LIFSP,'') = '91' then"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "block_group": 6,
+    "block_type": "CTE",
+    "start_block": 250,
+    "end_block": 400,
+    "parent_block_id": "",
+    "text": "when VBAK.LIFSK = '89' or coalesce(VBEP_MR.LIFSP,'') = '89' then 'Y' else 'N' end as Block_Dlv_89_Retrieve_Alert_Ind ,case when VBAK.LIFSK = '91' or coalesce(VBEP_MR.LIFSP,'') = '91' then 'Y' else 'N' end as Block_Dlv_91_Cust_Request_Ind ,case when VBAK.LIFSK = '92' or coalesce(VBEP_MR.LIFSP,'') = '92' then 'Y' else 'N' end as Block_Dlv_92_CSR_Hold_Ind ,case when VBAK.LIFSK = '93' or coalesce(VBEP_MR.LIFSP,'') = '93' then 'Y' else 'N' end as Block_Dlv_93_Price_Ind ,case when VBAK.LIFSK = '94' or coalesce(VBEP_MR.LIFSP,'') = '94' then 'Y' else 'N' end as Block_Dlv_94_Quality_Issue_Ind ,case when VBAK.LIFSK = '95' or coalesce(VBEP_MR.LIFSP,'') = '95' then 'Y' else 'N' end as Block_Dlv_95_EDI_NGG_Ind ,case when VBAK.LIFSK = '96' or coalesce(VBEP_MR.LIFSP,'') = '96' then 'Y' else 'N' end as Block_Dlv_96_Adv_Pay_Rqd_Ind ,case when VBAK.LIFSK = '97' or coalesce(VBEP_MR.LIFSP,'') = '97' then 'Y' else 'N' end as Block_Dlv_97_Nil_Pick_Ind ,case when coalesce(VBEP_MR.LIFSP,'') = '99' then 'Y' else 'N' end as Block_Dlv_99_CSR_Review_Ind ,case when VBAK.LIFSK = '99' then 'Y' else 'N' end as"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "block_group": 6,
+    "block_type": "CTE",
+    "start_block": 375,
+    "end_block": 525,
+    "parent_block_id": "",
+    "text": "as Block_Dlv_97_Nil_Pick_Ind ,case when coalesce(VBEP_MR.LIFSP,'') = '99' then 'Y' else 'N' end as Block_Dlv_99_CSR_Review_Ind ,case when VBAK.LIFSK = '99' then 'Y' else 'N' end as Block_Dlv_99_Assoc_with_Delivery_Ind ,case when VBAK.LIFSK Not In ('','80','87','88','89','91','92','93','94','95','97','97','99') then 'Y' when coalesce(VBEP_MR.LIFSP,'') Not In ('','80','87','88','89','91','92','93','94','95','97','97','99') then 'Y' else 'N' end as Block_Dlv_Other_Ind ,case when VBAK.UVALL <> 'C' OR VBAP.UVALL <> 'C' OR VBAK.UVALS <> 'C' then 'Y' else 'N' end as Block_Incompletion_Ind ,case when VBAP.EMCST = 'C' OR VBAP.SLCST = 'C' OR VBAP.TOTAL_LCCST in ('C','E') then 'Y' else 'N' end as Block_GTS_Ind ,case when VBAK.CMGST in ('B','C') then 'Y' else 'N' end as Block_Credit_Hold_Ind ,case when VBAK.FAKSK <> '' OR VBAP.FAKSP <> '' then 'Y' else 'N' end as Block_Billing_Ind ,KONV.KINAK as Price_Condition_Inactive ,CASE WHEN KONV.KSCHL='ZMAN' THEN 'Y' ELSE 'N' END AS ZMAN_Cond_Flag ,CASE WHEN KONV.KSCHL='ZMAN' and (KONV.KHERK = 'C' OR KONV.KSTEU = 'C' OR KONV.KMPRS = 'X') then 'M' WHEN KONV.KSCHL='ZMAN' then 'A' ELSE ''"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "block_group": 6,
+    "block_type": "CTE",
+    "start_block": 500,
+    "end_block": 650,
+    "parent_block_id": "",
+    "text": "AS ZMAN_Cond_Flag ,CASE WHEN KONV.KSCHL='ZMAN' and (KONV.KHERK = 'C' OR KONV.KSTEU = 'C' OR KONV.KMPRS = 'X') then 'M' WHEN KONV.KSCHL='ZMAN' then 'A' ELSE '' END AS ZMAN_Auto_Flag ,CASE WHEN KONV.KSCHL='ZMAN' THEN KONV.KWERT ELSE 0 END AS ZMAN_Manual_Amount ,PURCH_ORDER.Purch_Order_Nbr ,PURCH_ORDER.Purch_Order_Item_Nbr ,PURCH_ORDER.Purch_Order_Our_Ref ,PURCH_ORDER.Purch_Order_Conf_Date_AB_Max ,PURCH_ORDER.Purch_Order_Conf_Date_LA_Max ,coalesce(BILL_BLK_HDR.USERNAME,BILL_BLK_LN.USERNAME) as Last_Billing_Block_Removed_By ,WF_Last_Billing.PRSN_FRST_NAME || ' ' || WF_Last_Billing.PRSN_LAST_NAME AS Last_Billing_Block_Removed_By_User_name ,coalesce(BILL_BLK_HDR.Remove_Date,BILL_BLK_LN.Remove_Date) as Last_Billing_Block_Removed_Date ,coalesce(BILL_BLK_HDR.VALUE_OLD,BILL_BLK_LN.VALUE_OLD) as Last_Billing_Block_Removed_Cd ,coalesce(DEL_BLK_HDR.USERNAME,DEL_BLK_LN.USERNAME) as Last_Delivery_Block_Removed_By ,WF_Last_Delivery.PRSN_FRST_NAME || ' ' || WF_Last_Delivery.PRSN_LAST_NAME AS Last_Delivery_Block_Removed_By_User_name ,CHANGE_LOG_REJ.reject_date as Sales_Doc_Item_Reject_Date ,ROW_NUMBER() OVER (PARTITION BY (vbap.VBELN || vbap.POSNR || LIPS.VBELN || LIPS.POSNR) ORDER BY COALESCE(BD_OBD.VBELN,BD_SD.VBELN) ASC) as Sales_Doc_Line_Del_Row_Nbr ,TRY_TO_DATE(OTIFPROD.OTIF,'YYYYMMDD') as OTIF_Date_Original ,TRY_TO_DATE(OTIFPROD.REVOTIF,'YYYYMMDD') as OTIF_Date_Revised ,COALESCE(Snake_Orig.SDM_SCND_OTIF_MEASURE_DATE, OTIFPROD.OTIF_Measure_Date) as OTIF_Measure_Date ,TRY_TO_DATE(OTIFPROD.FRSTMAD,'YYYYMMDD') as MAD_Date_Original ,TRY_TO_DATE(OTIFPROD.PADAT,'YYYYMMDD') as Last_Prod_Avlb_Check_Date ,case when snake_orig.scnd_sd_nbr is not null then PLRS_ZINT_PA.Prod_Avail_Converted when coalesce(snake_match.interim_sales_order_ind,'') = 'Y' then 'X' else OTIFPROD.PAFLG end as Prod_Avail_Ind ,case when vbak.vbtyp in ( 'C','I') and coalesce(BD_OBD.RFBSK,BD_SD.RFBSK,'') not in ('C','D','E') and VBAP.ABGRU in ('','A5','A6','A8') and VBAP.MATNR <> 'INVALIDMATNO' and CURRENT_DATE() > COALESCE(Snake_Orig.SDM_SCND_OTIF_MEASURE_DATE, OTIFPROD.OTIF_Measure_Date)"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "block_group": 6,
+    "block_type": "CTE",
+    "start_block": 625,
+    "end_block": 775,
+    "parent_block_id": "",
+    "text": "Prod_Avail_Ind ,case when vbak.vbtyp in ( 'C','I') and coalesce(BD_OBD.RFBSK,BD_SD.RFBSK,'') not in ('C','D','E') and VBAP.ABGRU in ('','A5','A6','A8') and VBAP.MATNR <> 'INVALIDMATNO' and CURRENT_DATE() > COALESCE(Snake_Orig.SDM_SCND_OTIF_MEASURE_DATE, OTIFPROD.OTIF_Measure_Date) and ( (snake_orig.scnd_sd_nbr is not null and coalesce(snake_orig.SDM_SCND_BACKLOG_IND,'') = 'Y' ) or (snake_orig.scnd_sd_nbr is null and (vbap_sum_gi.sales_doc_item_goods_issued_qty_suom_sum + Under_Tol_Qty) < vbap.kwmeng) ) then 'Y' else 'N' end as Backlog_Ind ,case when snake_match.Interim_Sales_Order_Ind = 'Y' and snake_orig.Scnd_SD_nbr is null Then 'N' when vbak.vbtyp in ( 'C','I') and coalesce(BD_OBD.RFBSK,BD_SD.RFBSK,'') not in ('C','D','E') and VBAP.ABGRU in ('','A5','A6','A8') and CURRENT_DATE() > coalesce(Snake_Orig.SDM_SCND_OTIF_MEASURE_DATE, OTIFPROD.OTIF_Measure_Date) and ( (coalesce(snake_orig.SDM_SCND_BACKORDER_IND,'') = 'Y' ) or (snake_orig.Scnd_SD_nbr is null and (vbap_sum_gi.sales_doc_item_goods_issued_qty_suom_sum + Under_Tol_Qty) < vbap.kwmeng and OTIFPROD.PAFLG = 'N') ) then 'Y' else 'N' end as BackOrder_Ind ,CASE WHEN VBAK.AUART = 'ZINT' THEN 'Inter-Company' WHEN VBAK.VKORG in ('8003','8908') OR (VBAK.VKORG = '8002' and VBAK.KUNNR = '0020003539') THEN 'Export' ELSE 'Domestic' end AS Sales_Doc_Group ,CSRHDRTXT.ZTTEXT as CSR_HDR_Z002_Text ,CSRLINETXT.ZTTEXT as CSR_Line_Z020_Text ,CSRZMAN.ZTTEXT as CSR_Line_ZMAN_Text ,KNVV.KDGRP as CUST_ACCT_GROUP"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "block_group": 6,
+    "block_type": "CTE",
+    "start_block": 750,
+    "end_block": 900,
+    "parent_block_id": "",
+    "text": "= '8002' and VBAK.KUNNR = '0020003539') THEN 'Export' ELSE 'Domestic' end AS Sales_Doc_Group ,CSRHDRTXT.ZTTEXT as CSR_HDR_Z002_Text ,CSRLINETXT.ZTTEXT as CSR_Line_Z020_Text ,CSRZMAN.ZTTEXT as CSR_Line_ZMAN_Text ,KNVV.KDGRP as CUST_ACCT_GROUP ,VBKD_SD.INCO1 as Sales_Doc_Inco_Terms_1 ,VBKD_SD.INCO2 as Sales_Doc_Inco_Terms_2 ,VBPA_ZT.LIFNR as Consol_Partner ,-99 as Days_Until_OTIF ,VBAP.ARKTX as Material_Description_ARKTX ,CRED_HOLD.Remove_Date as Credit_Hold_Removed_Date ,TVFST_HDR.VTEXT as Sales_Doc_Billing_Block_Text ,TVFST_ITEM.VTEXT as Sales_Doc_Item_Billing_Block_Text ,TVLST.VTEXT as Sales_Doc_Delivery_Block_Text ,TVLST_SITEM.VTEXT as Sales_Doc_Sched_Line_Delivery_Block_Text ,TVFST_DHDR.VTEXT as Delivery_Doc_Billing_Block_Text ,TVFST_DITEM.VTEXT as Delivery_Doc_Item_Billing_Block_Text ,VBAP.KNUMA_AG as Sales_Doc_Item_Contract_Sales_Nbr ,VBAP.KDMAT as Customer_Material_Nbr ,LIKP.ZZICO_FLASH as Flash_Ind ,snake_orig.SCND_SD_Delivery_Doc_Actual_Goods_Issued_Date ,snake_orig.SCND_SD_Delivery_Doc_Billing_Status ,snake_orig.scnd_sd_nbr as Snake_Scnd_SD_Nbr ,snake_orig.scnd_sd_item_nbr as Snake_SD_Item_Nbr ,snake_match.Interim_Sales_Order_Ind ,snake_scnd.Interim_ZINT_Ind ,VBAP.LPRIO as Sales_Doc_Item_Delivery_Priority ,CCGEO.CTRY_NAME as COMPANY_CD_COUNTRY_NAME ,KONV.KNUMV AS PRICING_DOC_COND_NBR ,VBAP.NETWR_LOC_CURR_SRFR as sales_doc_item_net_value_loc_srfr ,VBAP.LOCAL_CURR as sales_doc_item_loc_curr ,LIPS.NETWR_LOC_CURR_SRFR as delivery_doc_item_net_value_loc_srfr ,pipo.rptg_ref_matl_no as Phase_In_Material_Nbr ,PIPO.RSN_TX as Phase_Out_Reason_Text ,VBAP.LGORT as Sales_Doc_Item_Storage_Loc ,VBAK.VSBED as Sales_Doc_Ship_Cond ,LIKP.VSBED as Delivery_Doc_Ship_Cond ,TVSBT_SD.VTEXT as Sales_Doc_Ship_Cond_Text ,TVSBT_DD.VTEXT as Delivery_Doc_Ship_Cond_Text ,T151T.ktext as Cust_Acct_Group_Text ,VBEP_MR.BANFN as PO_Req_Nbr ,snake_orig.SDM_SCND_BLOCKED_REASON ,snake_orig.SCND_SDM_SALES_DOC_SHIPPING_PLANT ,snake_orig.SDM_SCND_SALES_DOC_SHIPPING_PLANT_NAME ,snake_orig.SDM_SCND_SALES_ORG_CD ,snake_orig.SDM_SCND_SALES_ORG_NAME ,CURRENT_TIMESTAMP AS LAST_UPDATED_TIMESTAMP ,WF_CREATED_BY.PRSN_FRST_NAME || ' ' || WF_CREATED_BY.PRSN_LAST_NAME AS Sales_Doc_Created_By_Name ,LIKP.WBSTK as Delivery_Doc_Goods_Move_Status ,TINCT_INCO1.BEZEI AS Sales_Doc_Inco_Terms_1_TEXT ,CASE WHEN TINCT_INCO2.INCO1"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "block_group": 6,
+    "block_type": "CTE",
+    "start_block": 875,
+    "end_block": 1025,
+    "parent_block_id": "",
+    "text": ",snake_orig.SDM_SCND_BLOCKED_REASON ,snake_orig.SCND_SDM_SALES_DOC_SHIPPING_PLANT ,snake_orig.SDM_SCND_SALES_DOC_SHIPPING_PLANT_NAME ,snake_orig.SDM_SCND_SALES_ORG_CD ,snake_orig.SDM_SCND_SALES_ORG_NAME ,CURRENT_TIMESTAMP AS LAST_UPDATED_TIMESTAMP ,WF_CREATED_BY.PRSN_FRST_NAME || ' ' || WF_CREATED_BY.PRSN_LAST_NAME AS Sales_Doc_Created_By_Name ,LIKP.WBSTK as Delivery_Doc_Goods_Move_Status ,TINCT_INCO1.BEZEI AS Sales_Doc_Inco_Terms_1_TEXT ,CASE WHEN TINCT_INCO2.INCO1 IS NOT NULL THEN TINCT_INCO2.BEZEI ELSE VBKD_SD.INCO2 END AS Sales_Doc_Inco_Terms_2_TEXT ,MARC.PLNT_TYPE_CD as Plant_Type ,MARC.PLNT_TYPE_DS as Plant_Type_desc ,geo.BUSU_AREA_NAME AS plant_area ,geo.CTRY_NAME as Plant_Country_Name ,geo.RGN_NAME as Plant_Region ,geo.SPR_AREA_ABBR as Plant_Super_Area_CD ,geo.SPR_AREA_NAME as Plant_Super_Area ,geo.SPR_RGN_ABBR as Plant_Super_Region_CD ,geo.SPR_RGN_NAME as Plant_Super_Region ,PRIM_ULT_SPLY_LOC.ULTIMATE_SUPPLY_LOCATION_CD ,PRIM_ULT_SPLY_LOC.ULTIMATE_SUPPLY_LOCATION_DS ,PRIM_ULT_SPLY_LOC.PRIMARY_SUPPLY_LOCATION_CD ,PRIM_ULT_SPLY_LOC.PRIMARY_SUPPLY_LOCATION_DS ,T024D.DSNAM AS MRP_Controller_Desc ,TRY_TO_DATE(VBAK.VDATU,'YYYYMMDD') as Sales_Doc_Cust_Req_Del_Date ,case when VBAK.VTWEG ='00' OR to_char(snake_scnd.Interim_ZINT_Ind) = 'Y' then 'Y' else 'N' end as Customer_Ind ,snake_orig.SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE as SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE ,snake_orig.SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE_USD_SRFR as SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE_USD_SRFR ,snake_orig.SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE as SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE ,snake_orig.SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE_USD_SRFR as SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE_USD_SRFR ,snake_orig.ORIG_SDM_SALES_DOC_ITEM_GOODS_ISSUED_QTY_BUOM_SUM ,snake_orig.ORIG_SDM_SALES_DOC_ITEM_GOODS_ISSUED_QTY_SUOM_SUM ,snake_orig.SDM_SCND_SALES_DOC_ITEM_GOODS_ISSUED_QTY_BUOM_SUM ,snake_orig.SDM_SCND_SALES_DOC_ITEM_GOODS_ISSUED_QTY_SUOM_SUM ,snake_orig.SDM_SCND_SALES_DOC_ITEM_NET_VALUE_USD_SRFR ,snake_orig.SDM_SCND_SALES_DOC_ITEM_ORD_QTY_SALES_UNIT ,snake_orig.SDM_SCND_SALES_DOC_ITEM_NET_VALUE ,coalesce(snake_orig.SCND_SDM_SALES_DOC_SHIPPING_PLANT,VBAP.WERKS) as Physical_Plant_Cd ,coalesce(snake_orig.SDM_SCND_SALES_DOC_SHIPPING_PLANT_NAME,T001W.NAME1) as Physical_Plant_Name ,case when snake_orig.scnd_sd_nbr is null and VBAP_SUM_GI.Sales_Doc_Item_Goods_Issued_Qty_SUOM_Sum + Under_Tol_Qty >= vbap.kwmeng then 'Y' when snake_orig.scnd_sd_nbr is not null and snake_orig.SDM_SCND_SALES_DOC_ITEM_GOODS_ISSUED_QTY_SUOM_SUM + Under_Tol_Qty >= snake_orig.SDM_SCND_SALES_DOC_ITEM_ORD_QTY_SALES_UNIT then 'Y' else 'N' end as Ship_Compl_Ind ,VBKD_SDL.BSTKD_E as Sales_Doc_Cust_PO_Nbr_Rel ,VBEP_MR.BNFPO as PO_Req_Item_Nbr ,VBEP_MR.ETENR"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "block_group": 6,
+    "block_type": "CTE",
+    "start_block": 1000,
+    "end_block": 1150,
+    "parent_block_id": "",
+    "text": "when snake_orig.scnd_sd_nbr is not null and snake_orig.SDM_SCND_SALES_DOC_ITEM_GOODS_ISSUED_QTY_SUOM_SUM + Under_Tol_Qty >= snake_orig.SDM_SCND_SALES_DOC_ITEM_ORD_QTY_SALES_UNIT then 'Y' else 'N' end as Ship_Compl_Ind ,VBKD_SDL.BSTKD_E as Sales_Doc_Cust_PO_Nbr_Rel ,VBEP_MR.BNFPO as PO_Req_Item_Nbr ,VBEP_MR.ETENR as Sales_Doc_Item_Sched_Line ,VBAP.FKREL as Sales_Doc_Item_Bill_Rel ,snake_orig.SDM_SCND_PLANNED_GI_MEASURE_DATE ,TRY_TO_DATE(vbep_frst.EDATU,'YYYYMMDD') as Sales_Doc_Frst_Schd_Line_CRDD ,vbep_frst.BMENG as Sales_Doc_Frst_Schd_Line_Conf_Qty ,case when (try_to_date(vbep_frst.edatu,'YYYYMMDD')) > (sales_doc_item_create_date + 1) then 'Y' else 'N' end as Sales_Doc_Item_CRDD_Sent_Ind ,SNAKE_ORIG.SDM_SCND_CURRENT_EXPECTED_DELIVERY_DATE FROM PUBLISH.CORE_CO_OM_CDS.V_VBAK VBAK INNER JOIN PUBLISH.CORE_CO_OM_CDS.V_VBAP VBAP ON VBAK.VBELN = VBAP.VBELN AND VBAK.MANDT = VBAP.MANDT LEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_VBKD VBKD_SD ON VBAK.VBELN = VBKD_SD.VBELN AND VBAK.MANDT = VBKD_SD.MANDT AND VBKD_SD.POSNR = '000000' LEFT JOIN PUBLISH.CORE_CO_OM_MAIN.V_TINCT TINCT_INCO1 ON VBKD_SD.INCO1 = TINCT_INCO1.INCO1 AND TINCT_INCO1.SPRAS='EN' LEFT JOIN PUBLISH.CORE_CO_OM_MAIN.V_TINCT TINCT_INCO2 ON VBKD_SD.INCO2 = TINCT_INCO2.INCO1 AND TINCT_INCO2.SPRAS='EN' LEFT JOIN PUBLISH.MDM_S4HANA_BASE.V_TVKO TVKO ON TVKO.VKORG = VBAK.VKORG AND TVKO.MANDT = VBAK.MANDT LEFT JOIN PUBLISH.MDM_S4HANA_BASE.V_TVKOT TVKOT ON TVKOT.MANDT = VBAK.MANDT AND TVKOT.VKORG = VBAK.VKORG AND TVKOT.SPRAS = 'EN' LEFT JOIN PUBLISH.CORE_MDM_CDS.V_TVSBT TVSBT_SD ON VBAK.VSBED = TVSBT_SD.VSBED AND TVSBT_SD.SPRAS = 'EN' LEFT JOIN PUBLISH.MDM_S4HANA_BASE.V_T001 T001 ON TVKO.MANDT ="
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "block_group": 6,
+    "block_type": "CTE",
+    "start_block": 1125,
+    "end_block": 1275,
+    "parent_block_id": "",
+    "text": "= VBAK.VKORG AND TVKOT.SPRAS = 'EN' LEFT JOIN PUBLISH.CORE_MDM_CDS.V_TVSBT TVSBT_SD ON VBAK.VSBED = TVSBT_SD.VSBED AND TVSBT_SD.SPRAS = 'EN' LEFT JOIN PUBLISH.MDM_S4HANA_BASE.V_T001 T001 ON TVKO.MANDT = T001.MANDT AND TVKO.BUKRS = T001.BUKRS LEFT JOIN PUBLISH.FIN_DIM_PUBLIC.GEOGRAPHY_HIER CCGEO ON TVKO.BUKRS = CCGEO.SAP_CO_CODE AND CCGEO.SAP_CO_CODE <> '~' AND CCGEO.SOLV_LGL_ENTY_IND = 'Y' LEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_VBKD VBKD_SDL ON VBAP.MANDT = VBKD_SDL.MANDT AND VBAP.VBELN = VBKD_SDL.VBELN AND VBAP.POSNR = VBKD_SDL.POSNR LEFT JOIN PUBLISH.MDM.MATERIAL_PROD_HRCY PRODH ON PRODH.MATL_NO = RIGHT(VBAP.MATNR,10) LEFT OUTER JOIN ( SELECT V.MANDT ,V.VBELN ,V.POSNR ,V.ETENR ,V.MBDAT ,V.WADAT ,V.EDATU ,V.LIFSP ,V.BANFN ,V.BNFPO FROM PUBLISH.CORE_CO_COMMON_CDS.V_VBEP V QUALIFY ROW_NUMBER() OVER(PARTITION BY V.VBELN, V.POSNR ORDER BY V.ETENR DESC) = 1 ) VBEP_MR ON VBEP_MR.MANDT = VBAP.MANDT AND VBEP_MR.VBELN = VBAP.VBELN AND VBEP_MR.POSNR = VBAP.POSNR LEFT OUTER JOIN VBEP_SUM ON VBEP_SUM.MANDT = VBAP.MANDT AND VBEP_SUM.VBELN = VBAP.VBELN AND VBEP_SUM.POSNR = VBAP.POSNR LEFT JOIN PUBLISH.CORE_CO_OM_CDS.V_LIPS LIPS ON VBAP.MANDT = LIPS.MANDT AND VBAP.VBELN = LIPS.VGBEL AND VBAP.POSNR = LIPS.VGPOS and VBAK.VBTYP = LIPS.VGTYP"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "block_group": 6,
+    "block_type": "CTE",
+    "start_block": 1250,
+    "end_block": 1400,
+    "parent_block_id": "",
+    "text": "VBAP.VBELN AND VBEP_SUM.POSNR = VBAP.POSNR LEFT JOIN PUBLISH.CORE_CO_OM_CDS.V_LIPS LIPS ON VBAP.MANDT = LIPS.MANDT AND VBAP.VBELN = LIPS.VGBEL AND VBAP.POSNR = LIPS.VGPOS and VBAK.VBTYP = LIPS.VGTYP AND LIPS.UECHA = '000000' and (LIPS.KCMENG + lips.LFIMG) >0 LEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_LIKP LIKP ON LIKP.VBELN = LIPS.VBELN AND LIKP.MANDT = LIPS.MANDT LEFT JOIN PUBLISH.CORE_MDM_CDS.V_TVSBT TVSBT_DD ON LIKP.VSBED = TVSBT_DD.VSBED AND TVSBT_DD.SPRAS = 'EN' LEFT JOIN BILLING_DOCS BD_OBD ON BD_OBD.MANDT = LIPS.MANDT AND BD_OBD.VGBEL = LIPS.VBELN AND BD_OBD.VGPOS = LIPS.POSNR LEFT JOIN BILLING_DOCS BD_SD ON BD_SD.MANDT = VBAP.MANDT AND BD_SD.VGBEL = VBAP.VBELN AND BD_SD.VGPOS = VBAP.POSNR LEFT JOIN VBPA_PARTNERS VBPA_ZC ON VBAK.MANDT = VBPA_ZC.MANDT AND VBAK.VBELN = VBPA_ZC.VBELN AND VBPA_ZC.PARVW = 'ZC' LEFT OUTER JOIN ( SELECT PERNR ,MIN(USRID) as USRID ,MANDT FROM PUBLISH.MDM_S4HANA_BASE.V_PA0105 WHERE SUBSTR(USRID,1,1) <> 'X' AND SUBSTR(USRID,1,3) <> 'SAC' GROUP BY ALL ) SAP_HR ON VBPA_ZC.PERNR = SAP_HR.PERNR AND VBPA_ZC.MANDT = SAP_HR.MANDT LEFT OUTER JOIN PUBLISH.MDM_BASE.EID_WORKFORCE WFcsr ON SAP_HR.USRID = WFcsr.USER_PIN AND WFcsr.USER_PIN"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "block_group": 6,
+    "block_type": "CTE",
+    "start_block": 1375,
+    "end_block": 1525,
+    "parent_block_id": "",
+    "text": "'SAC' GROUP BY ALL ) SAP_HR ON VBPA_ZC.PERNR = SAP_HR.PERNR AND VBPA_ZC.MANDT = SAP_HR.MANDT LEFT OUTER JOIN PUBLISH.MDM_BASE.EID_WORKFORCE WFcsr ON SAP_HR.USRID = WFcsr.USER_PIN AND WFcsr.USER_PIN <> '' LEFT OUTER JOIN PUBLISH.MDM_BASE.EID_WORKFORCE WFSup ON WFcsr.SUPV_ID = WFSup.PRSN_ID LEFT JOIN VBPA_PARTNERS VBPA_WE ON VBAK.MANDT = VBPA_WE.MANDT AND VBAK.VBELN = VBPA_WE.VBELN AND VBPA_WE.PARVW = 'WE' LEFT JOIN PUBLISH.CORE_MDM_CDS.V_KNA1 KNA1_WE ON KNA1_WE.KUNNR = VBPA_WE.KUNNR LEFT JOIN PUBLISH.MDM.GCSA_GC_CNTRYC_ALL ST_CNTRY ON KNA1_WE.LAND1 = ST_CNTRY.CTRY_CODE AND ST_CNTRY.curr_ind = 'Y' AND ST_CNTRY.lang_qlfr_code = 'EN001' LEFT JOIN PUBLISH.CORE_MDM_CDS.V_KNA1 KNA1_SOLD ON KNA1_SOLD.KUNNR = VBAK.KUNNR LEFT JOIN VBPA_PARTNERS VBPA_RE ON VBAK.MANDT = VBPA_RE.MANDT AND VBAK.VBELN = VBPA_RE.VBELN AND VBPA_RE.PARVW = 'RE' LEFT JOIN PUBLISH.CORE_MDM_CDS.V_KNA1 KNA1_RE ON KNA1_RE.KUNNR = VBPA_RE.KUNNR LEFT JOIN VBPA_PARTNERS VBPA_RG ON VBAK.MANDT = VBPA_RG.MANDT AND VBAK.VBELN = VBPA_RG.VBELN AND VBPA_RG.PARVW = 'RG' LEFT JOIN PUBLISH.CORE_MDM_CDS.V_KNA1 KNA1_RG ON KNA1_RG.KUNNR = VBPA_RG.KUNNR LEFT JOIN VBPA_PARTNERS VBPA_ZP ON VBAK.MANDT = VBPA_ZP.MANDT AND VBAK.VBELN = VBPA_ZP.VBELN AND VBPA_ZP.PARVW = 'ZP' LEFT JOIN"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "block_group": 6,
+    "block_type": "CTE",
+    "start_block": 1500,
+    "end_block": 1650,
+    "parent_block_id": "",
+    "text": "JOIN PUBLISH.CORE_MDM_CDS.V_KNA1 KNA1_RG ON KNA1_RG.KUNNR = VBPA_RG.KUNNR LEFT JOIN VBPA_PARTNERS VBPA_ZP ON VBAK.MANDT = VBPA_ZP.MANDT AND VBAK.VBELN = VBPA_ZP.VBELN AND VBPA_ZP.PARVW = 'ZP' LEFT JOIN PUBLISH.CORE_MDM_CDS.V_KNA1 KNA1_ZP ON KNA1_ZP.KUNNR = VBPA_ZP.KUNNR LEFT JOIN VBPA_PARTNERS VBPA_YU ON VBAK.MANDT = VBPA_YU.MANDT AND VBAK.VBELN = VBPA_YU.VBELN AND VBPA_YU.PARVW = 'YU' LEFT JOIN VBPA_PARTNERS VBPA_ZS ON VBAK.MANDT = VBPA_ZS.MANDT AND VBAK.VBELN = VBPA_ZS.VBELN AND VBPA_ZS.PARVW = 'ZS' LEFT OUTER JOIN ( SELECT PERNR ,MIN(USRID) as USRID ,MANDT FROM PUBLISH.MDM_S4HANA_BASE.V_PA0105 WHERE SUBSTR(USRID,1,1) <> 'X' AND SUBSTR(USRID,1,3) <> 'SAC' GROUP BY ALL ) SAP_HR_ZS ON VBPA_ZS.PERNR = SAP_HR_ZS.PERNR AND VBPA_ZS.MANDT = SAP_HR_ZS.MANDT LEFT OUTER JOIN PUBLISH.MDM_BASE.EID_WORKFORCE WFrep ON SAP_HR_ZS.USRID = WFrep.USER_PIN AND WFrep.USER_PIN <> '' LEFT JOIN VBPA_PARTNERS VBPA_YG ON VBAK.MANDT = VBPA_YG.MANDT AND VBAK.VBELN = VBPA_YG.VBELN AND VBPA_YG.PARVW = 'YG' LEFT JOIN PUBLISH.CORE_MDM_CDS.V_KNA1 KNA1_YG ON KNA1_YG.KUNNR = VBPA_YG.KUNNR LEFT JOIN PUBLISH.MDM.MATERIAL MARA ON MARA.MATL_NO = VBAP.MATNR LEFT JOIN PUBLISH.MDM.MATERIAL_PLANT MARC on MARC.MATL_NO = VBAP.MATNR and"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "block_group": 6,
+    "block_type": "CTE",
+    "start_block": 1625,
+    "end_block": 1775,
+    "parent_block_id": "",
+    "text": "LEFT JOIN PUBLISH.CORE_MDM_CDS.V_KNA1 KNA1_YG ON KNA1_YG.KUNNR = VBPA_YG.KUNNR LEFT JOIN PUBLISH.MDM.MATERIAL MARA ON MARA.MATL_NO = VBAP.MATNR LEFT JOIN PUBLISH.MDM.MATERIAL_PLANT MARC on MARC.MATL_NO = VBAP.MATNR and MARC.PLNT_CD_SOLV = VBAP.WERKS AND MARC.SRCE_ID='MDM_S4HANA_BASE' LEFT JOIN PUBLISH.CORE_MDM_CDS.V_T024D T024D ON MARC.PLNT_CD_SOLV = T024D.WERKS AND MARC.MRP_CTLR_ID = T024D.DISPO LEFT JOIN PUBLISH.MDM.MATERIAL_SALES_ORG MVKE ON MVKE.MATL_NO = VBAP.MATNR AND MVKE.SAP_SLS_ORG_CD_SOLV = VBAK.VKORG AND MVKE.SAP_DIST_CHNL_CD_SOLV = VBAK.VTWEG AND MVKE.SRCE_ID ='MDM_S4HANA_BASE' LEFT OUTER JOIN PUBLISH.MDM_S4HANA_BASE.V_T001W T001W ON T001W.MANDT = VBAP.MANDT AND T001W.WERKS = VBAP.WERKS LEFT OUTER JOIN PURCH_ORDER ON PURCH_ORDER.MANDT = VBAP.MANDT AND PURCH_ORDER.VBELN = VBAP.VBELN AND PURCH_ORDER.POSNR = VBAP.POSNR LEFT OUTER JOIN (select distinct DATE,FACTORY_CALENDAR, SHIPPING_DATE_ORDER,SOURCE_SYSTEM_CODE from PUBLISH.GSC_LEX_PUBLIC.V_FACTORY_HOLIDAY_CAL_WORKING_DAYS) WD_START_SDI ON WD_START_SDI.DATE = Sales_Doc_Item_Create_Date AND WD_START_SDI.FACTORY_CALENDAR = T001W.FABKL AND WD_START_SDI.SOURCE_SYSTEM_CODE='S4' LEFT JOIN CHG_LOG_VBAK_BLK BILL_BLK_HDR ON VBAK.VBELN = BILL_BLK_HDR.Sales_Doc_Nbr AND BILL_BLK_HDR.FNAME = 'FAKSK' LEFT JOIN CHG_LOG_VBAP_BLK BILL_BLK_LN ON VBAP.VBELN = BILL_BLK_LN.Sales_Doc_Nbr AND VBAP.POSNR = BILL_BLK_LN.Sales_Doc_Item_Nbr AND BILL_BLK_LN.FNAME = 'FAKSP' LEFT JOIN CHG_LOG_VBAK_BLK DEL_BLK_HDR ON VBAP.VBELN = DEL_BLK_HDR.Sales_Doc_Nbr and DEL_BLK_HDR.FNAME = 'LIFSK'"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "block_group": 6,
+    "block_type": "CTE",
+    "start_block": 1750,
+    "end_block": 1900,
+    "parent_block_id": "",
+    "text": "BILL_BLK_LN ON VBAP.VBELN = BILL_BLK_LN.Sales_Doc_Nbr AND VBAP.POSNR = BILL_BLK_LN.Sales_Doc_Item_Nbr AND BILL_BLK_LN.FNAME = 'FAKSP' LEFT JOIN CHG_LOG_VBAK_BLK DEL_BLK_HDR ON VBAP.VBELN = DEL_BLK_HDR.Sales_Doc_Nbr and DEL_BLK_HDR.FNAME = 'LIFSK' LEFT JOIN CHG_LOG_VBEP_BLK DEL_BLK_LN ON VBAP.VBELN = DEL_BLK_LN.Sales_Doc_Nbr AND VBAP.POSNR = DEL_BLK_LN.Sales_Doc_Item_Nbr AND DEL_BLK_LN.FNAME = 'LIFSP' LEFT JOIN CHANGE_LOG_REJ ON CHANGE_LOG_REJ.sales_doc_nbr = VBAP.VBELN AND CHANGE_LOG_REJ.sales_doc_item_nbr = VBAP.POSNR AND CHANGE_LOG_REJ.value_new = VBAP.ABGRU LEFT OUTER JOIN PUBLISH.MDM_BASE.EID_WORKFORCE WF_Last_Billing ON coalesce(BILL_BLK_HDR.USERNAME,BILL_BLK_LN.USERNAME) = WF_Last_Billing.USER_PIN AND WF_Last_Billing.USER_PIN <> '' LEFT OUTER JOIN PUBLISH.MDM_BASE.EID_WORKFORCE WF_Last_Delivery ON coalesce(DEL_BLK_HDR.USERNAME,DEL_BLK_LN.USERNAME) = WF_Last_Delivery.USER_PIN AND WF_Last_Delivery.USER_PIN <> '' LEFT OUTER JOIN (select distinct DATE,FACTORY_CALENDAR, SHIPPING_DATE_ORDER,SOURCE_SYSTEM_CODE from PUBLISH.GSC_LEX_PUBLIC.V_FACTORY_HOLIDAY_CAL_WORKING_DAYS) WD_END ON WD_END.DATE = CURRENT_DATE AND WD_END.FACTORY_CALENDAR = T001W.FABKL AND WD_END.SOURCE_SYSTEM_CODE='S4' LEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_t630r T630R ON VBAP.VSTEL = T630R.VSTEL AND VBAP.ROUTE = T630R.ROUTE AND VBAP.MANDT = T630R.MANDT AND T630R.GRULG = '' LEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_t630r T630R_SP ON VBAP.VSTEL = T630R_SP.VSTEL AND VBAP.MANDT = T630R_SP.MANDT AND T630R_SP.ROUTE = '' AND T630R_SP.GRULG = '' LEFT OUTER JOIN PUBLISH.CORE_CO_OM_CDS.V_PRCD_ELEMENTS KONV ON COALESCE(BD_OBD.KNUMV,BD_SD.KNUMV) ="
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "block_group": 6,
+    "block_type": "CTE",
+    "start_block": 1875,
+    "end_block": 2025,
+    "parent_block_id": "",
+    "text": "T630R_SP ON VBAP.VSTEL = T630R_SP.VSTEL AND VBAP.MANDT = T630R_SP.MANDT AND T630R_SP.ROUTE = '' AND T630R_SP.GRULG = '' LEFT OUTER JOIN PUBLISH.CORE_CO_OM_CDS.V_PRCD_ELEMENTS KONV ON COALESCE(BD_OBD.KNUMV,BD_SD.KNUMV) = KONV.KNUMV AND COALESCE(BD_OBD.POSNR,BD_SD.POSNR )= KONV.KPOSN AND KONV.KSCHL='ZMAN' AND trim(KONV.KINAK)='' LEFT OUTER JOIN PUBLISH.CORE_CO_OM_MAIN.V_TVAKT TVAKT ON VBAK.AUART = TVAKT.AUART AND VBAK.MANDT = TVAKT.MANDT AND TVAKT.SPRAS = 'EN' LEFT OUTER JOIN ( SELECT VBAP.MANDT ,VBAP.VBELN ,VBAP.POSNR ,SUM(COALESCE(LIPS.GOODS_ISSUED_NET_VALUE,0)) as Sales_Doc_Item_Goods_Issued_Value_Sum ,SUM(COALESCE(LIPS.GOODS_ISSUED_NET_VALUE_USD_DOC_DT_DYNAMIC_SRFR,0)) as Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR ,SUM(to_decimal(COALESCE(LIPS.GOODS_ISSUE_QTY_BUOM,0),15,2)) as Sales_Doc_Item_Goods_Issued_Qty_BUOM_Sum ,SUM(to_decimal(COALESCE(LIPS.GOODS_ISSUE_QTY_SUOM,0),15,2)) as Sales_Doc_Item_Goods_Issued_Qty_SUOM_Sum ,COUNT(DISTINCT LIPS.VBELN) as Sales_Doc_Item_Delivery_Count FROM PUBLISH.CORE_CO_OM_CDS.V_VBAK VBAK INNER JOIN PUBLISH.CORE_CO_OM_CDS.V_VBAP VBAP ON VBAK.VBELN = VBAP.VBELN AND VBAK.MANDT = VBAP.MANDT LEFT JOIN PUBLISH.CORE_CO_OM_CDS.V_LIPS LIPS ON VBAP.MANDT = LIPS.MANDT AND VBAP.VBELN = LIPS.VGBEL AND VBAP.POSNR = LIPS.VGPOS AND VBAK.VBTYP = LIPS.VGTYP AND LIPS.UECHA = '000000' and (LIPS.KCMENG + lips.LFIMG) >0 GROUP BY ALL) VBAP_SUM_GI ON VBAP_SUM_GI.MANDT = VBAP.MANDT AND VBAP_SUM_GI.VBELN = VBAP.VBELN AND VBAP_SUM_GI.POSNR = VBAP.POSNR LEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_TVAUT TVAUT ON VBAK.AUGRU = TVAUT.AUGRU AND VBAK.MANDT = TVAUT.MANDT AND TVAUT.SPRAS ="
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "block_group": 6,
+    "block_type": "CTE",
+    "start_block": 2000,
+    "end_block": 2150,
+    "parent_block_id": "",
+    "text": "= VBAP.MANDT AND VBAP_SUM_GI.VBELN = VBAP.VBELN AND VBAP_SUM_GI.POSNR = VBAP.POSNR LEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_TVAUT TVAUT ON VBAK.AUGRU = TVAUT.AUGRU AND VBAK.MANDT = TVAUT.MANDT AND TVAUT.SPRAS = 'EN' LEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_OTIF_AND_PRODAVAIL OTIFPROD ON OTIFPROD.CLIENT = VBAP.MANDT AND OTIFPROD.VBELN = VBAP.VBELN AND OTIFPROD.POSNR = VBAP.POSNR LEFT JOIN ( SELECT TDNAME ,TDID ,ZTTEXT ,TDLDATE ,TDLTIME FROM PUBLISH.CORE_CO_COMMON_CDS.V_ZSTXL WHERE TDOBJECT in ('VBBK','VBBP') AND TDID = 'Z002' QUALIFY ROW_NUMBER() OVER (PARTITION BY TDNAME ORDER BY TDLDATE,TDLTIME DESC) = 1 ) CSRHDRTXT ON CSRHDRTXT.TDNAME = VBAK.VBELN LEFT JOIN ( SELECT TDNAME ,TDID ,ZTTEXT ,TDLDATE ,TDLTIME FROM PUBLISH.CORE_CO_COMMON_CDS.V_ZSTXL WHERE TDOBJECT in ('VBBK','VBBP') AND TDID = 'Z020' QUALIFY ROW_NUMBER() OVER (PARTITION BY TDNAME ORDER BY TDLDATE,TDLTIME DESC) = 1 ) CSRLINETXT ON CSRLINETXT.TDNAME = (VBAK.VBELN || VBAP.POSNR) LEFT JOIN ( SELECT TDNAME ,TDID ,ZTTEXT ,TDLDATE ,TDLTIME FROM PUBLISH.CORE_CO_COMMON_CDS.V_ZSTXL WHERE TDOBJECT in ('VBBK','VBBP') AND TDID = 'ZMAN' QUALIFY ROW_NUMBER() OVER (PARTITION BY TDNAME ORDER BY TDLDATE,TDLTIME DESC) = 1 )"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "block_group": 6,
+    "block_type": "CTE",
+    "start_block": 2125,
+    "end_block": 2275,
+    "parent_block_id": "",
+    "text": ",TDLDATE ,TDLTIME FROM PUBLISH.CORE_CO_COMMON_CDS.V_ZSTXL WHERE TDOBJECT in ('VBBK','VBBP') AND TDID = 'ZMAN' QUALIFY ROW_NUMBER() OVER (PARTITION BY TDNAME ORDER BY TDLDATE,TDLTIME DESC) = 1 ) CSRZMAN ON CSRZMAN.TDNAME = (VBAK.VBELN || VBAP.POSNR) LEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_T461X T461X ON T461X.STRGR = MARC.PLNG_STRG_GRP_CD AND T461X.SPRAS = 'EN' LEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_T176T T176T ON T176T.MANDT = VBKD_SD.MANDT AND T176T.BSARK = VBKD_SD.BSARK AND T176T.SPRAS = 'EN' LEFT JOIN PUBLISH.CORE_MDM_CDS.V_KNVV KNVV On VBAK.KUNNR = KNVV.KUNNR And VBAK.VTWEG = KNVV.VTWEG And VBAK.VKORG = KNVV.VKORG LEFT JOIN VBPA_PARTNERS VBPA_ZT ON VBAK.MANDT = VBPA_ZT.MANDT AND VBAK.VBELN = VBPA_ZT.VBELN AND VBPA_ZT.PARVW = 'ZT' LEFT JOIN CHG_LOG_VBAK_BLK CRED_HOLD ON VBAK.VBELN = CRED_HOLD.Sales_Doc_Nbr AND CRED_HOLD.FNAME = 'CMGST' LEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_TVFST TVFST_HDR ON TVFST_HDR.MANDT = VBAK.MANDT AND TVFST_HDR.FAKSP = VBAK.FAKSK AND TVFST_HDR.SPRAS='EN' LEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_TVFST TVFST_ITEM ON TVFST_ITEM.MANDT = VBAP.MANDT AND TVFST_ITEM.FAKSP = VBAP.FAKSP AND TVFST_ITEM.SPRAS='EN' LEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_TVFST TVFST_DHDR ON TVFST_DHDR.MANDT = LIKP.MANDT AND TVFST_DHDR.FAKSP = LIKP.FAKSK AND TVFST_DHDR.SPRAS='EN' LEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_TVFST TVFST_DITEM"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "block_group": 6,
+    "block_type": "CTE",
+    "start_block": 2250,
+    "end_block": 2400,
+    "parent_block_id": "",
+    "text": "VBAP.MANDT AND TVFST_ITEM.FAKSP = VBAP.FAKSP AND TVFST_ITEM.SPRAS='EN' LEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_TVFST TVFST_DHDR ON TVFST_DHDR.MANDT = LIKP.MANDT AND TVFST_DHDR.FAKSP = LIKP.FAKSK AND TVFST_DHDR.SPRAS='EN' LEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_TVFST TVFST_DITEM ON TVFST_DITEM.MANDT = LIPS.MANDT AND TVFST_DITEM.FAKSP = LIPS.FAKSP AND TVFST_DITEM.SPRAS='EN' LEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_TVLST TVLST ON TVLST.MANDT = VBAK.MANDT AND TVLST.LIFSP = VBAK.LIFSK AND TVLST.SPRAS='EN' LEFT JOIN PUBLISH.CORE_CO_COMMON_CDS.V_TVLST TVLST_SITEM ON TVLST_SITEM.MANDT = VBEP_MR.MANDT AND TVLST_SITEM.LIFSP = VBEP_MR.LIFSP AND TVLST_SITEM.SPRAS='EN' LEFT JOIN ( select matl_no ,min(rsn_tx) as rsn_tx ,listagg(rptg_ref_matl_no,';') as RPTG_REF_MATL_NO from PUBLISH.MDM.MATERIAL_PIPO PIPO where CURRENT_DATE between vald_from_dt and vald_to_dt or vald_to_dt is null group by all ) PIPO ON VBAP.MATNR = PIPO.MATL_NO left join ( select CC.orig_doc_nbr ,CC.orig_doc_item_nbr ,CC.orig_doc_create_date ,CC.Scnd_SD_Nbr AS Scnd_SD_nbr ,CC.Scnd_SD_Item_Nbr AS Scnd_SD_Item_Nbr ,MAX(CC.SDM_SCND_OTIF_MEASURE_DATE) AS SDM_SCND_OTIF_MEASURE_DATE ,max(CC.SDM_SCND_BLOCKED_REASON ) AS SDM_SCND_BLOCKED_REASON ,max(CC.SCND_SDM_SALES_DOC_SHIPPING_PLANT ) AS SCND_SDM_SALES_DOC_SHIPPING_PLANT ,max(CC.SDM_SCND_SALES_DOC_SHIPPING_PLANT_NAME) AS SDM_SCND_SALES_DOC_SHIPPING_PLANT_NAME ,max(CC.SDM_SCND_SALES_ORG_CD ) AS SDM_SCND_SALES_ORG_CD ,max(CC.SDM_SCND_SALES_ORG_NAME ) AS SDM_SCND_SALES_ORG_NAME ,max(CC.SDM_SCND_SALES_UNIT ) as SDM_SCND_SALES_UNIT ,max(CC.sdm_scnd_sales_doc_item_reject_reason_cd) as sdm_scnd_sales_doc_item_reject_reason_cd ,max(CC.SDM_SCND_SALES_DOC_ITEM_NET_VALUE ) as SDM_SCND_SALES_DOC_ITEM_NET_VALUE ,max(CC.SDM_SCND_SALES_DOC_ITEM_NET_VALUE_USD_SRFR ) as SDM_SCND_SALES_DOC_ITEM_NET_VALUE_USD_SRFR ,max(CC.SDM_SCND_BACKLOG_IND ) AS SDM_SCND_BACKLOG_IND"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "block_group": 6,
+    "block_type": "CTE",
+    "start_block": 2375,
+    "end_block": 2525,
+    "parent_block_id": "",
+    "text": "AS SDM_SCND_SALES_ORG_CD ,max(CC.SDM_SCND_SALES_ORG_NAME ) AS SDM_SCND_SALES_ORG_NAME ,max(CC.SDM_SCND_SALES_UNIT ) as SDM_SCND_SALES_UNIT ,max(CC.sdm_scnd_sales_doc_item_reject_reason_cd) as sdm_scnd_sales_doc_item_reject_reason_cd ,max(CC.SDM_SCND_SALES_DOC_ITEM_NET_VALUE ) as SDM_SCND_SALES_DOC_ITEM_NET_VALUE ,max(CC.SDM_SCND_SALES_DOC_ITEM_NET_VALUE_USD_SRFR ) as SDM_SCND_SALES_DOC_ITEM_NET_VALUE_USD_SRFR ,max(CC.SDM_SCND_BACKLOG_IND ) AS SDM_SCND_BACKLOG_IND ,max(CC.SDM_SCND_BACKORDER_IND ) AS SDM_SCND_BACKORDER_IND ,max(CC.SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE ) AS SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE ,max(CC.SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE_USD_SRFR) AS SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE_USD_SRFR ,max(CC.SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE ) AS SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE ,max(CC.SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE_USD_SRFR) AS SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE_USD_SRFR ,max(CC.SDM_SCND_SALES_DOC_ITEM_ORD_QTY_SALES_UNIT ) as SDM_SCND_SALES_DOC_ITEM_ORD_QTY_SALES_UNIT ,max(DELV_ACT_GI_DATE ) as SCND_SD_Delivery_Doc_Actual_Goods_Issued_Date ,max(ZF2_DOCUMENT_BILLING_STATUS) as SCND_SD_Delivery_Doc_Billing_Status ,max(CC.ORIG_SDM_SALES_DOC_ITEM_GOODS_ISSUED_QTY_BUOM_SUM ) as ORIG_SDM_SALES_DOC_ITEM_GOODS_ISSUED_QTY_BUOM_SUM ,max(CC.ORIG_SDM_SALES_DOC_ITEM_GOODS_ISSUED_QTY_SUOM_SUM) as ORIG_SDM_SALES_DOC_ITEM_GOODS_ISSUED_QTY_SUOM_SUM ,max(CC.SDM_SCND_SALES_DOC_ITEM_GOODS_ISSUED_QTY_BUOM_SUM) as SDM_SCND_SALES_DOC_ITEM_GOODS_ISSUED_QTY_BUOM_SUM ,max(CC.SDM_SCND_SALES_DOC_ITEM_GOODS_ISSUED_QTY_SUOM_SUM) as SDM_SCND_SALES_DOC_ITEM_GOODS_ISSUED_QTY_SUOM_SUM ,MAX(CC.SDM_SCND_PLANNED_GI_MEASURE_DATE) AS SDM_SCND_PLANNED_GI_MEASURE_DATE ,MAX(CC.SDM_SCND_CURRENT_EXPECTED_DELIVERY_DATE) as SDM_SCND_CURRENT_EXPECTED_DELIVERY_DATE from publish.CORE_COCKPIT_CDS.V_COCKPIT_CONTROL CC where orig_doc_kind = 'SO' and orig_doc_srce = 'S4' and scenario = 'DS1_3' and coalesce(sdm_scnd_sales_doc_item_reject_reason_cd, '') in ('','A6','A8','CT','LQ') group by all ) snake_orig ON vbap.vbeln = snake_orig.orig_doc_nbr AND ltrim(vbap.posnr,'0') = ltrim(snake_orig.orig_doc_item_nbr,'0') left join ( select CC.orig_doc_nbr ,CC.orig_doc_item_nbr ,CC.orig_doc_create_date ,'Y' as Interim_Sales_Order_Ind from publish.CORE_COCKPIT_CDS.V_COCKPIT_CONTROL CC where orig_doc_kind = 'SO' and orig_doc_srce = 'S4' and scenario = 'DS1_3' group by all ) snake_match ON vbap.vbeln = snake_match.orig_doc_nbr AND ltrim(vbap.posnr,'0') = ltrim(snake_match.orig_doc_item_nbr,'0') left join ( select SLS_DOC_NO ,SLS_DOC_ITEM_NO"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "block_group": 6,
+    "block_type": "CTE",
+    "start_block": 2500,
+    "end_block": 2650,
+    "parent_block_id": "",
+    "text": "= 'S4' and scenario = 'DS1_3' group by all ) snake_match ON vbap.vbeln = snake_match.orig_doc_nbr AND ltrim(vbap.posnr,'0') = ltrim(snake_match.orig_doc_item_nbr,'0') left join ( select SLS_DOC_NO ,SLS_DOC_ITEM_NO ,BACKORDER_INDICATOR ,case when trim(PROD_AVAIL) = '' then 'X' else PROD_AVAIL end as Prod_Avail_Converted from legacy_data.dftsv01.v01_fts_blbo blbo where SLS_DOC_TYPE_CD = 'ZINT' and blbo.SNAPSHOT_DT = ( select max(SNAPSHOT_DT) -1 from legacy_data.dftsv01.v01_fts_blbo ) QUALIFY ROW_NUMBER() OVER(PARTITION BY SLS_DOC_NO, SLS_DOC_ITEM_NO ORDER BY SCHD_LINE_NO DESC) = 1 ) PLRS_ZINT_PA on snake_orig.scnd_sd_nbr = PLRS_ZINT_PA.sls_doc_no and ltrim(snake_orig.scnd_sd_item_nbr,'0') = ltrim(PLRS_ZINT_PA.SLS_DOC_ITEM_NO,'0') left join ( select scnd_sd_nbr ,scenario ,'Y' as Interim_ZINT_Ind from PUBLISH.CORE_COCKPIT_CDS.V_COCKPIT_CONTROL where scnd_sd_kind = 'SO' and scnd_sd_srce = 'S4' and scenario = 'DS1_2' group by all ) snake_scnd on vbap.vbeln = snake_scnd.scnd_sd_nbr LEFT OUTER JOIN PUBLISH.MDM_S4HANA_BASE.V_T151T T151T ON KNVV.KDGRP = T151T.KDGRP AND T151T.SPRAS = 'EN' LEFT OUTER JOIN PUBLISH.MDM_BASE.EID_WORKFORCE WF_CREATED_BY ON VBAK.ERNAM = WF_CREATED_BY.USER_PIN AND WF_CREATED_BY.USER_PIN <> '' LEFT JOIN PUBLISH.GSC_COMMON_PUBLIC.V_PRIM_ULT_SPLY_LOC PRIM_ULT_SPLY_LOC on MARC.MATL_NO = PRIM_ULT_SPLY_LOC.MATERIAL_NUMBER AND MARC.PLNT_CD = PRIM_ULT_SPLY_LOC.DEMAND_PLANT_CD LEFT JOIN PUBLISH.MDM_S4HANA_BASE.V_TVKO"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "block_group": 6,
+    "block_type": "CTE",
+    "start_block": 2625,
+    "end_block": 2690,
+    "parent_block_id": "",
+    "text": "PUBLISH.MDM_BASE.EID_WORKFORCE WF_CREATED_BY ON VBAK.ERNAM = WF_CREATED_BY.USER_PIN AND WF_CREATED_BY.USER_PIN <> '' LEFT JOIN PUBLISH.GSC_COMMON_PUBLIC.V_PRIM_ULT_SPLY_LOC PRIM_ULT_SPLY_LOC on MARC.MATL_NO = PRIM_ULT_SPLY_LOC.MATERIAL_NUMBER AND MARC.PLNT_CD = PRIM_ULT_SPLY_LOC.DEMAND_PLANT_CD LEFT JOIN PUBLISH.MDM_S4HANA_BASE.V_TVKO TVKO_PLANT ON T001W.VKORG=TVKO_PLANT.VKORG left join PUBLISH.FIN_DIM_PUBLIC.GEOGRAPHY_HIER geo on TVKO_PLANT.BUKRS =geo.SAP_CO_CODE AND geo.SAP_CO_CODE <> '~' AND geo.SOLV_LGL_ENTY_IND = 'Y' left join PUBLISH.CORE_CO_COMMON_CDS.V_VBEP vbep_frst on vbap.vbeln = vbep_frst.vbeln and vbap.posnr = vbep_frst.posnr and vbep_frst.etenr = '0001' WHERE VBAK.VBTYP <> 'B' ) );"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d_sub1",
+    "block_group": 6,
+    "block_type": "SUBQUERY",
+    "start_block": 0,
+    "end_block": 16,
+    "parent_block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "text": "SELECT V.MANDT ,V.VBELN ,V.POSNR ,V.ETENR ,V.MBDAT ,V.WADAT ,V.EDATU ,V.LIFSP ,V.BANFN ,V.BNFPO FROM PUBLISH.CORE_CO_COMMON_CDS.V_VBEP V QUALIFY ROW_NUMBER("
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d_sub2",
+    "block_group": 6,
+    "block_type": "SUBQUERY",
+    "start_block": 0,
+    "end_block": 10,
+    "parent_block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "text": "SELECT PERNR ,MIN(USRID) as USRID ,MANDT FROM PUBLISH.MDM_S4HANA_BASE.V_PA0105 WHERE SUBSTR(USRID,1,1"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d_sub3",
+    "block_group": 6,
+    "block_type": "SUBQUERY",
+    "start_block": 0,
+    "end_block": 10,
+    "parent_block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "text": "SELECT PERNR ,MIN(USRID) as USRID ,MANDT FROM PUBLISH.MDM_S4HANA_BASE.V_PA0105 WHERE SUBSTR(USRID,1,1"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d_sub4",
+    "block_group": 6,
+    "block_type": "SUBQUERY",
+    "start_block": 0,
+    "end_block": 6,
+    "parent_block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "text": "select distinct DATE,FACTORY_CALENDAR, SHIPPING_DATE_ORDER,SOURCE_SYSTEM_CODE from PUBLISH.GSC_LEX_PUBLIC.V_FACTORY_HOLIDAY_CAL_WORKING_DAYS"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d_sub5",
+    "block_group": 6,
+    "block_type": "SUBQUERY",
+    "start_block": 0,
+    "end_block": 6,
+    "parent_block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "text": "select distinct DATE,FACTORY_CALENDAR, SHIPPING_DATE_ORDER,SOURCE_SYSTEM_CODE from PUBLISH.GSC_LEX_PUBLIC.V_FACTORY_HOLIDAY_CAL_WORKING_DAYS"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d_sub6",
+    "block_group": 6,
+    "block_type": "SUBQUERY",
+    "start_block": 0,
+    "end_block": 63,
+    "parent_block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "text": "SELECT VBAP.MANDT ,VBAP.VBELN ,VBAP.POSNR ,SUM(COALESCE(LIPS.GOODS_ISSUED_NET_VALUE,0)) as Sales_Doc_Item_Goods_Issued_Value_Sum ,SUM(COALESCE(LIPS.GOODS_ISSUED_NET_VALUE_USD_DOC_DT_DYNAMIC_SRFR,0)) as Sales_Doc_Item_Goods_Issued_Value_Sum_USD_SRFR ,SUM(to_decimal(COALESCE(LIPS.GOODS_ISSUE_QTY_BUOM,0),15,2)) as Sales_Doc_Item_Goods_Issued_Qty_BUOM_Sum ,SUM(to_decimal(COALESCE(LIPS.GOODS_ISSUE_QTY_SUOM,0),15,2)) as Sales_Doc_Item_Goods_Issued_Qty_SUOM_Sum ,COUNT(DISTINCT LIPS.VBELN) as Sales_Doc_Item_Delivery_Count FROM PUBLISH.CORE_CO_OM_CDS.V_VBAK VBAK INNER JOIN PUBLISH.CORE_CO_OM_CDS.V_VBAP VBAP ON VBAK.VBELN = VBAP.VBELN AND VBAK.MANDT = VBAP.MANDT LEFT JOIN PUBLISH.CORE_CO_OM_CDS.V_LIPS LIPS ON VBAP.MANDT = LIPS.MANDT AND VBAP.VBELN = LIPS.VGBEL AND VBAP.POSNR = LIPS.VGPOS AND VBAK.VBTYP = LIPS.VGTYP AND LIPS.UECHA = '000000' and (LIPS.KCMENG + lips.LFIMG"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d_sub7",
+    "block_group": 6,
+    "block_type": "SUBQUERY",
+    "start_block": 0,
+    "end_block": 12,
+    "parent_block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "text": "SELECT TDNAME ,TDID ,ZTTEXT ,TDLDATE ,TDLTIME FROM PUBLISH.CORE_CO_COMMON_CDS.V_ZSTXL WHERE TDOBJECT in ('VBBK','VBBP'"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d_sub8",
+    "block_group": 6,
+    "block_type": "SUBQUERY",
+    "start_block": 0,
+    "end_block": 12,
+    "parent_block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "text": "SELECT TDNAME ,TDID ,ZTTEXT ,TDLDATE ,TDLTIME FROM PUBLISH.CORE_CO_COMMON_CDS.V_ZSTXL WHERE TDOBJECT in ('VBBK','VBBP'"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d_sub9",
+    "block_group": 6,
+    "block_type": "SUBQUERY",
+    "start_block": 0,
+    "end_block": 12,
+    "parent_block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "text": "SELECT TDNAME ,TDID ,ZTTEXT ,TDLDATE ,TDLTIME FROM PUBLISH.CORE_CO_COMMON_CDS.V_ZSTXL WHERE TDOBJECT in ('VBBK','VBBP'"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d_sub10",
+    "block_group": 6,
+    "block_type": "SUBQUERY",
+    "start_block": 0,
+    "end_block": 24,
+    "parent_block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "text": "select matl_no ,min(rsn_tx) as rsn_tx ,listagg(rptg_ref_matl_no,';') as RPTG_REF_MATL_NO from PUBLISH.MDM.MATERIAL_PIPO PIPO where CURRENT_DATE between vald_from_dt and vald_to_dt or vald_to_dt is null group by all"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d_sub11",
+    "block_group": 6,
+    "block_type": "SUBQUERY",
+    "start_block": 0,
+    "end_block": 117,
+    "parent_block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "text": "select CC.orig_doc_nbr ,CC.orig_doc_item_nbr ,CC.orig_doc_create_date ,CC.Scnd_SD_Nbr AS Scnd_SD_nbr ,CC.Scnd_SD_Item_Nbr AS Scnd_SD_Item_Nbr ,MAX(CC.SDM_SCND_OTIF_MEASURE_DATE) AS SDM_SCND_OTIF_MEASURE_DATE ,max(CC.SDM_SCND_BLOCKED_REASON ) AS SDM_SCND_BLOCKED_REASON ,max(CC.SCND_SDM_SALES_DOC_SHIPPING_PLANT ) AS SCND_SDM_SALES_DOC_SHIPPING_PLANT ,max(CC.SDM_SCND_SALES_DOC_SHIPPING_PLANT_NAME) AS SDM_SCND_SALES_DOC_SHIPPING_PLANT_NAME ,max(CC.SDM_SCND_SALES_ORG_CD ) AS SDM_SCND_SALES_ORG_CD ,max(CC.SDM_SCND_SALES_ORG_NAME ) AS SDM_SCND_SALES_ORG_NAME ,max(CC.SDM_SCND_SALES_UNIT ) as SDM_SCND_SALES_UNIT ,max(CC.sdm_scnd_sales_doc_item_reject_reason_cd) as sdm_scnd_sales_doc_item_reject_reason_cd ,max(CC.SDM_SCND_SALES_DOC_ITEM_NET_VALUE ) as SDM_SCND_SALES_DOC_ITEM_NET_VALUE ,max(CC.SDM_SCND_SALES_DOC_ITEM_NET_VALUE_USD_SRFR ) as SDM_SCND_SALES_DOC_ITEM_NET_VALUE_USD_SRFR ,max(CC.SDM_SCND_BACKLOG_IND ) AS SDM_SCND_BACKLOG_IND ,max(CC.SDM_SCND_BACKORDER_IND ) AS SDM_SCND_BACKORDER_IND ,max(CC.SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE ) AS SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE ,max(CC.SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE_USD_SRFR) AS SDM_SCND_SALES_DOC_ITEM_BACKLOG_NET_VALUE_USD_SRFR ,max(CC.SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE ) AS SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE ,max(CC.SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE_USD_SRFR) AS SDM_SCND_SALES_DOC_ITEM_BACKORDER_NET_VALUE_USD_SRFR ,max(CC.SDM_SCND_SALES_DOC_ITEM_ORD_QTY_SALES_UNIT ) as SDM_SCND_SALES_DOC_ITEM_ORD_QTY_SALES_UNIT ,max(DELV_ACT_GI_DATE ) as SCND_SD_Delivery_Doc_Actual_Goods_Issued_Date ,max(ZF2_DOCUMENT_BILLING_STATUS) as SCND_SD_Delivery_Doc_Billing_Status ,max(CC.ORIG_SDM_SALES_DOC_ITEM_GOODS_ISSUED_QTY_BUOM_SUM ) as ORIG_SDM_SALES_DOC_ITEM_GOODS_ISSUED_QTY_BUOM_SUM ,max(CC.ORIG_SDM_SALES_DOC_ITEM_GOODS_ISSUED_QTY_SUOM_SUM) as ORIG_SDM_SALES_DOC_ITEM_GOODS_ISSUED_QTY_SUOM_SUM ,max(CC.SDM_SCND_SALES_DOC_ITEM_GOODS_ISSUED_QTY_BUOM_SUM) as SDM_SCND_SALES_DOC_ITEM_GOODS_ISSUED_QTY_BUOM_SUM ,max(CC.SDM_SCND_SALES_DOC_ITEM_GOODS_ISSUED_QTY_SUOM_SUM) as SDM_SCND_SALES_DOC_ITEM_GOODS_ISSUED_QTY_SUOM_SUM ,MAX(CC.SDM_SCND_PLANNED_GI_MEASURE_DATE) AS SDM_SCND_PLANNED_GI_MEASURE_DATE ,MAX(CC.SDM_SCND_CURRENT_EXPECTED_DELIVERY_DATE) as SDM_SCND_CURRENT_EXPECTED_DELIVERY_DATE from publish.CORE_COCKPIT_CDS.V_COCKPIT_CONTROL CC where orig_doc_kind = 'SO' and orig_doc_srce = 'S4' and scenario = 'DS1_3' and coalesce(sdm_scnd_sales_doc_item_reject_reason_cd, ''"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d_sub12",
+    "block_group": 6,
+    "block_type": "SUBQUERY",
+    "start_block": 0,
+    "end_block": 25,
+    "parent_block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "text": "select CC.orig_doc_nbr ,CC.orig_doc_item_nbr ,CC.orig_doc_create_date ,'Y' as Interim_Sales_Order_Ind from publish.CORE_COCKPIT_CDS.V_COCKPIT_CONTROL CC where orig_doc_kind = 'SO' and orig_doc_srce = 'S4' and scenario = 'DS1_3' group by all"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d_sub13",
+    "block_group": 6,
+    "block_type": "SUBQUERY",
+    "start_block": 0,
+    "end_block": 29,
+    "parent_block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "text": "select SLS_DOC_NO ,SLS_DOC_ITEM_NO ,BACKORDER_INDICATOR ,case when trim(PROD_AVAIL) = '' then 'X' else PROD_AVAIL end as Prod_Avail_Converted from legacy_data.dftsv01.v01_fts_blbo blbo where SLS_DOC_TYPE_CD = 'ZINT' and blbo.SNAPSHOT_DT = ( select max(SNAPSHOT_DT"
+  },
+  {
+    "block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d_sub14",
+    "block_group": 6,
+    "block_type": "SUBQUERY",
+    "start_block": 0,
+    "end_block": 23,
+    "parent_block_id": "10e38e72-415d-4465-8eb8-9c26987aa49d",
+    "text": "select scnd_sd_nbr ,scenario ,'Y' as Interim_ZINT_Ind from PUBLISH.CORE_COCKPIT_CDS.V_COCKPIT_CONTROL where scnd_sd_kind = 'SO' and scnd_sd_srce = 'S4' and scenario = 'DS1_2' group by all"
+  },
+  {
+    "block_id": "7d3cbb42-3b99-46a9-8d1d-126f9bd807d4",
+    "block_group": 7,
+    "block_type": "UPDATE",
+    "start_block": 0,
+    "end_block": 35,
+    "parent_block_id": "",
+    "text": "Update CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_WRK T1 set T1.Sales_Doc_Item_Open_Ind = T2.Sales_Doc_Item_Open_Ind ,T1.Sales_Doc_Item_CSR_Open_Ind = T2.Sales_Doc_Item_CSR_Open_Ind from (SELECT Sales_Doc_Nbr,Sales_Doc_Item_Nbr, MAX(Sales_Doc_Item_Open_Ind) AS Sales_Doc_Item_Open_Ind , max(Sales_Doc_Item_CSR_Open_Ind) as Sales_Doc_Item_CSR_Open_Ind FROM CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_WRK GROUP BY Sales_Doc_Nbr ,Sales_Doc_Item_Nbr) T2 where T1.Sales_Doc_Nbr= T2.Sales_Doc_Nbr AND T1.Sales_Doc_Item_Nbr = T2.Sales_Doc_Item_Nbr ;"
+  },
+  {
+    "block_id": "7d3cbb42-3b99-46a9-8d1d-126f9bd807d4_sub1",
+    "block_group": 7,
+    "block_type": "SUBQUERY",
+    "start_block": 0,
+    "end_block": 15,
+    "parent_block_id": "7d3cbb42-3b99-46a9-8d1d-126f9bd807d4",
+    "text": "SELECT Sales_Doc_Nbr,Sales_Doc_Item_Nbr, MAX(Sales_Doc_Item_Open_Ind) AS Sales_Doc_Item_Open_Ind , max(Sales_Doc_Item_CSR_Open_Ind) as Sales_Doc_Item_CSR_Open_Ind FROM CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_WRK GROUP BY Sales_Doc_Nbr ,Sales_Doc_Item_Nbr"
+  },
+  {
+    "block_id": "1b144c15-b617-470d-8d78-64f9097e075c",
+    "block_group": 8,
+    "block_type": "UPDATE",
+    "start_block": 0,
+    "end_block": 38,
+    "parent_block_id": "",
+    "text": "Update CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_WRK T1 set T1.Sales_Doc_Item_Open_Category = T2.Sales_Doc_Item_Open_Category, T1.Sales_Doc_Item_CSR_Open_Category = T2.Sales_Doc_Item_CSR_Open_Category from (SELECT Sales_Doc_Nbr,Sales_Doc_Item_Nbr, MAX(Sales_Doc_Item_Open_Category) AS Sales_Doc_Item_Open_Category, max(Sales_Doc_Item_CSR_Open_Category) as Sales_Doc_Item_CSR_Open_Category FROM CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_WRK GROUP BY Sales_Doc_Nbr ,Sales_Doc_Item_Nbr) T2 where T1.Sales_Doc_Nbr= T2.Sales_Doc_Nbr AND T1.Sales_Doc_Item_Nbr = T2.Sales_Doc_Item_Nbr ; alter Table CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_MTLZ swap"
+  },
+  {
+    "block_id": "1b144c15-b617-470d-8d78-64f9097e075c_sub1",
+    "block_group": 8,
+    "block_type": "SUBQUERY",
+    "start_block": 0,
+    "end_block": 14,
+    "parent_block_id": "1b144c15-b617-470d-8d78-64f9097e075c",
+    "text": "SELECT Sales_Doc_Nbr,Sales_Doc_Item_Nbr, MAX(Sales_Doc_Item_Open_Category) AS Sales_Doc_Item_Open_Category, max(Sales_Doc_Item_CSR_Open_Category) as Sales_Doc_Item_CSR_Open_Category FROM CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_WRK GROUP BY Sales_Doc_Nbr ,Sales_Doc_Item_Nbr"
+  },
+  {
+    "block_id": "57303cad-cbb6-4752-802b-20803b869ace",
+    "block_group": 9,
+    "block_type": "CTE",
+    "start_block": 0,
+    "end_block": 44,
+    "parent_block_id": "",
+    "text": "with CORE_CO_OM_MAIN.SALES_DOCUMENT_MASTER_WRK; CALL DART_MONITOR_AND_ALERT.P_ADD_PROCEDURE_LOG(:PROJECT_CODE, :PROCEDURE_NAME, :TABLE_SCHEMA, :TABLE_NAME, 'COMPLETED', 'The data refresh is completed.', :START_DATETIME, CURRENT_TIMESTAMP(),:NOTIFICATION_GROUP); RETURN TRUE; EXCEPTION WHEN OTHER THEN CALL DART_MONITOR_AND_ALERT.P_ADD_PROCEDURE_LOG(:PROJECT_CODE, :PROCEDURE_NAME, :TABLE_SCHEMA, :TABLE_NAME, 'ERROR', :SQLCODE || ': ' || :SQLERRM, :START_DATETIME, CURRENT_TIMESTAMP(),:NOTIFICATION_GROUP); RETURN :SQLCODE || ': ' || :SQLERRM; END; ;"
+  }
+]
